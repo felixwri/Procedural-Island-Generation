@@ -325,7 +325,7 @@
     "m_Hidden": false,
     "m_ShaderOutputName": "Scale",
     "m_StageCapability": 3,
-    "m_Value": 20.0,
+    "m_Value": 100.0,
     "m_DefaultValue": 500.0,
     "m_Labels": []
 }
@@ -520,10 +520,10 @@
         "m_Expanded": true,
         "m_Position": {
             "serializedVersion": "2",
-            "x": -266.0000305175781,
-            "y": 718.6666259765625,
-            "width": 209.3333282470703,
-            "height": 352.0001220703125
+            "x": -243.33331298828126,
+            "y": 721.3333129882813,
+            "width": 209.3332977294922,
+            "height": 352.00006103515627
         }
     },
     "m_Slots": [
@@ -995,7 +995,7 @@
     "m_CustomColors": {
         "m_SerializableColors": []
     },
-    "m_BlendMode": 15
+    "m_BlendMode": 13
 }
 
 {

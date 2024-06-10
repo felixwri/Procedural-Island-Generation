@@ -13,21 +13,17 @@ public class MeshGenerator : MonoBehaviour
     int[] triangles;
     Color[] colors;
 
-
     public int xSize = 40;
     public int zSize = 40;
 
-    public float perlinScaleOne = 0.3f;
-    public float smallPerlinDampener = 0.8f;
+    public float perlinScaleOne = 0.05f;
+    public float smallPerlinDampener = 1f;
 
-    public float perlinScaleTwo = 0.2f;
+    public float perlinScaleTwo = 0.02f;
     public float perlinTwoOffset = 100;
 
-    public float logTransform = 1f;
-    public float rootTransform = 1f;
-
-    public float terrainMaxHeight = 2f;
-    public float waterLevel = 0.2f;
+    public float terrainMaxHeight = 25f;
+    public float waterLevel = 2f;
 
     public Gradient gradient;
 
@@ -42,6 +38,12 @@ public class MeshGenerator : MonoBehaviour
         CreateShape();
         UpdateMesh();
 
+    }
+
+    void OnValidate()
+    {
+        CreateShape();
+        UpdateMesh();
     }
 
     public Vector3Int GetVertice(int x, int z)
@@ -88,14 +90,13 @@ public class MeshGenerator : MonoBehaviour
                 float y = Mathf.PerlinNoise(x * perlinScaleOne, z * perlinScaleOne) * smallPerlinDampener;
                 float height = Mathf.PerlinNoise(x * perlinScaleTwo + perlinTwoOffset, z * perlinScaleTwo);
 
-                height = Mathf.Sqrt(height) * rootTransform;
-
                 height *= terrainMaxHeight;
-
 
                 y *= height;
 
                 y *= falloffPoints[i];
+
+                y = Mathf.Round(y * 2) / 2;
 
                 if (y < waterLevel) y = waterLevel;
 

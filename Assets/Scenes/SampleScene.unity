@@ -590,8 +590,6 @@ MonoBehaviour:
   smallPerlinDampener: 1
   perlinScaleTwo: 0.02
   perlinTwoOffset: 2
-  logTransform: 1
-  rootTransform: 1
   terrainMaxHeight: 25
   waterLevel: 2
   gradient:

@@ -13,19 +13,20 @@ public class MeshGenerator : MonoBehaviour
     int[] triangles;
     Color[] colors;
 
+    public Instancer instancer;
+
     public int xSize = 40;
     public int zSize = 40;
 
     public float perlinScaleOne = 0.05f;
-    public float smallPerlinDampener = 1f;
-
-    public float perlinScaleTwo = 0.02f;
-    public float perlinTwoOffset = 100;
 
     public float terrainMaxHeight = 25f;
     public float waterLevel = 2f;
 
     public Gradient gradient;
+
+    public float treeNoise = 1f;
+    public float treeActivationAmount = 1f;
 
     float minHeight;
     float maxHeight;
@@ -37,14 +38,17 @@ public class MeshGenerator : MonoBehaviour
         GetComponent<MeshFilter>().mesh = mesh;
         CreateShape();
         UpdateMesh();
-
     }
 
-    void OnValidate()
-    {
-        CreateShape();
-        UpdateMesh();
-    }
+    // void OnValidate()
+    // {
+    //     if (mesh == null)
+    //     {
+    //         return;
+    //     }
+    //     CreateShape();
+    //     UpdateMesh();
+    // }
 
     public Vector3Int GetVertice(int x, int z)
     {
@@ -87,12 +91,9 @@ public class MeshGenerator : MonoBehaviour
             for (int x = 0; x <= xSize; x++)
             {
 
-                float y = Mathf.PerlinNoise(x * perlinScaleOne, z * perlinScaleOne) * smallPerlinDampener;
-                float height = Mathf.PerlinNoise(x * perlinScaleTwo + perlinTwoOffset, z * perlinScaleTwo);
+                float y = Mathf.PerlinNoise(x * perlinScaleOne, z * perlinScaleOne);
 
-                height *= terrainMaxHeight;
-
-                y *= height;
+                y *= terrainMaxHeight;
 
                 y *= falloffPoints[i];
 
@@ -101,11 +102,45 @@ public class MeshGenerator : MonoBehaviour
                 if (y < waterLevel) y = waterLevel;
 
                 vertices[i] = new Vector3(x, y, z);
-
-                if (y > maxHeight) maxHeight = y;
-                if (y < minHeight) minHeight = y;
                 i++;
+
+                if (y > waterLevel)
+                {
+                    float tn = Mathf.PerlinNoise(x * treeNoise, z * treeNoise);
+                    if (tn > treeActivationAmount)
+                    {
+                        if (UnityEngine.Random.Range(0, 100) > 70)
+                        {
+                            float rh = UnityEngine.Random.Range(80f, 110f);
+                            Vector3 scale = new Vector3(rh, rh, rh);
+
+                            float xOffset = x + UnityEngine.Random.Range(-0.5f, 0.5f);
+                            float zOffset = z + UnityEngine.Random.Range(-0.5f, 0.5f);
+
+                            instancer.AddTree(new Vector3(xOffset, y, zOffset), Quaternion.Euler(-90, 0, 0), scale);
+
+                        }
+
+                    }
+
+                    if (UnityEngine.Random.Range(0, 100) > 90)
+                    {
+                        float rh = UnityEngine.Random.Range(90f, 110f);
+                        Vector3 scale = new Vector3(rh, rh, rh);
+
+                        float xOffset = x + UnityEngine.Random.Range(-0.5f, 0.5f);
+                        float zOffset = z + UnityEngine.Random.Range(-0.5f, 0.5f);
+
+                        instancer.AddBush(new Vector3(xOffset, y, zOffset), Quaternion.Euler(-90, 0, 0), scale);
+                    }
+
+                }
+
+                if (y < minHeight) minHeight = y;
+                if (y > maxHeight) maxHeight = y;
+
             }
+
         }
 
 
@@ -134,6 +169,7 @@ public class MeshGenerator : MonoBehaviour
         uvs = new Vector2[vertices.Length];
         colors = new Color[vertices.Length];
 
+
         for (int i = 0, z = 0; z <= zSize; z++)
         {
             for (int x = 0; x <= xSize; x++)
@@ -145,7 +181,10 @@ public class MeshGenerator : MonoBehaviour
                 i++;
             }
         }
+        // instancer.LogPositions();
+        instancer.Log();
     }
+
 
     void UpdateMesh()
     {

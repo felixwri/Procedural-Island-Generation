@@ -13,8 +13,8 @@ public class MeshGenerator : MonoBehaviour
     int[] triangles;
     Color[] colors;
 
-    public int xSize = 40;
-    public int zSize = 40;
+    public int xSize = 80;
+    public int zSize = 80;
 
     public float perlinScaleOne = 0.05f;
     public float smallPerlinDampener = 1f;
@@ -29,6 +29,8 @@ public class MeshGenerator : MonoBehaviour
 
     float minHeight;
     float maxHeight;
+
+    private float RandomValue = UnityEngine.Random.Range(0f, 1f);
 
     // Start is called before the first frame update
     void Start()
@@ -56,22 +58,48 @@ public class MeshGenerator : MonoBehaviour
         return vertices[z * (xSize + 1) + x].y < waterLevel;
     }
 
+
+
+
+
+
+
+
     float[] FalloffMap()
     {
+        
         float[] points = new float[(xSize + 1) * (zSize + 1)];
+        print(xSize);
+
+
+
+
+
+
         for (int z = 0; z <= zSize; z++)
-        {
+        { 
             for (int x = 0; x <= xSize; x++)
             {
-                float xCoord = x / (float)xSize * 2 - 1;
-                float zCoord = z / (float)zSize * 2 - 1;
-                float value = Mathf.Max(Mathf.Abs(xCoord), Mathf.Abs(zCoord));
-                points[z * (xSize + 1) + x] = (1 - value);
+                
+                
+                float xCoord = Mathf.Abs((x) / (float)xSize *2- 1) ;
+                float zCoord = Mathf.Abs((z) / (float)zSize *2 - 1) ;                
+                float value = Mathf.Max((xCoord),(zCoord));
+                points[z * (xSize + 1) + x] = (1- value);
+                
             }
         }
-
         return points;
     }
+
+
+
+
+    
+
+
+
+    
 
     // Update is called once per frame
     void CreateShape()
@@ -87,17 +115,23 @@ public class MeshGenerator : MonoBehaviour
             for (int x = 0; x <= xSize; x++)
             {
 
+
                 float y = Mathf.PerlinNoise(x * perlinScaleOne, z * perlinScaleOne) * smallPerlinDampener;
-                float height = Mathf.PerlinNoise(x * perlinScaleTwo + perlinTwoOffset, z * perlinScaleTwo);
 
-                height *= terrainMaxHeight;
-
-                y *= height;
-
+                y*=15;
                 y *= falloffPoints[i];
 
-                y = Mathf.Round(y * 2) / 2;
 
+
+                
+                
+                
+                y = Mathf.Pow(1.25f,(y));
+            
+                y = Mathf.Round(y*2)/2;
+
+
+           
                 if (y < waterLevel) y = waterLevel;
 
                 vertices[i] = new Vector3(x, y, z);

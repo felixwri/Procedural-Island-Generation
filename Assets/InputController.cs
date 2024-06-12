@@ -70,6 +70,15 @@ public class InputController : MonoBehaviour
 
             mainCamera.transform.position -= cameraSpeed * Time.deltaTime * backward;
         }
+
+        if (Input.GetKey(KeyCode.Q))
+        {
+            mainCamera.transform.position -= cameraSpeed * Time.deltaTime * mainCamera.transform.up;
+        }
+        if (Input.GetKey(KeyCode.E))
+        {
+            mainCamera.transform.position += cameraSpeed * Time.deltaTime * mainCamera.transform.up;
+        }
     }
 
     private Vector3Int? RaycastGround()

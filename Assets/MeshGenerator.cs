@@ -13,24 +13,23 @@ public class MeshGenerator : MonoBehaviour
     int[] triangles;
     Color[] colors;
 
-    public int xSize = 80;
-    public int zSize = 80;
+    public Instancer instancer;
+
+    public int xSize = 40;
+    public int zSize = 40;
 
     public float perlinScaleOne = 0.05f;
-    public float smallPerlinDampener = 1f;
-
-    public float perlinScaleTwo = 0.02f;
-    public float perlinTwoOffset = 100;
 
     public float terrainMaxHeight = 25f;
     public float waterLevel = 2f;
 
     public Gradient gradient;
 
+    public float treeNoise = 1f;
+    public float treeActivationAmount = 1f;
+
     float minHeight;
     float maxHeight;
-
-    private float RandomValue = UnityEngine.Random.Range(0f, 1f);
 
     // Start is called before the first frame update
     void Start()
@@ -39,14 +38,17 @@ public class MeshGenerator : MonoBehaviour
         GetComponent<MeshFilter>().mesh = mesh;
         CreateShape();
         UpdateMesh();
-
     }
 
-    void OnValidate()
-    {
-        CreateShape();
-        UpdateMesh();
-    }
+    // void OnValidate()
+    // {
+    //     if (mesh == null)
+    //     {
+    //         return;
+    //     }
+    //     CreateShape();
+    //     UpdateMesh();
+    // }
 
     public Vector3Int GetVertice(int x, int z)
     {
@@ -58,48 +60,22 @@ public class MeshGenerator : MonoBehaviour
         return vertices[z * (xSize + 1) + x].y < waterLevel;
     }
 
-
-
-
-
-
-
-
     float[] FalloffMap()
     {
-        
         float[] points = new float[(xSize + 1) * (zSize + 1)];
-        print(xSize);
-
-
-
-
-
-
         for (int z = 0; z <= zSize; z++)
-        { 
+        {
             for (int x = 0; x <= xSize; x++)
             {
-                
-                
-                float xCoord = Mathf.Abs((x) / (float)xSize *2- 1) ;
-                float zCoord = Mathf.Abs((z) / (float)zSize *2 - 1) ;                
-                float value = Mathf.Max((xCoord),(zCoord));
-                points[z * (xSize + 1) + x] = (1- value);
-                
+                float xCoord = x / (float)xSize * 2 - 1;
+                float zCoord = z / (float)zSize * 2 - 1;
+                float value = Mathf.Max(Mathf.Abs(xCoord), Mathf.Abs(zCoord));
+                points[z * (xSize + 1) + x] = (1 - value);
             }
         }
+
         return points;
     }
-
-
-
-
-    
-
-
-
-    
 
     // Update is called once per frame
     void CreateShape()
@@ -115,31 +91,62 @@ public class MeshGenerator : MonoBehaviour
             for (int x = 0; x <= xSize; x++)
             {
 
+                float y = Mathf.PerlinNoise(x * perlinScaleOne, z * perlinScaleOne);
 
-                float y = Mathf.PerlinNoise(x * perlinScaleOne, z * perlinScaleOne) * smallPerlinDampener;
-
-                y*=15;
+                y *= terrainMaxHeight;
+                
                 y *= falloffPoints[i];
 
 
-
+        
                 
-                
-                
-                y = Mathf.Pow(1.25f,(y));
-            
-                y = Mathf.Round(y*2)/2;
+               
+               
 
+                y = Mathf.Round(y * 2) / 2;
 
-           
                 if (y < waterLevel) y = waterLevel;
 
                 vertices[i] = new Vector3(x, y, z);
-
-                if (y > maxHeight) maxHeight = y;
-                if (y < minHeight) minHeight = y;
                 i++;
+
+                if (y > waterLevel+1)
+                {
+                    float tn = Mathf.PerlinNoise(x * treeNoise, z * treeNoise);
+                    if (tn > treeActivationAmount)
+                    {
+                        if (UnityEngine.Random.Range(0, 100) > 70)
+                        {
+                            float rh = UnityEngine.Random.Range(120f, 200f);
+                            Vector3 scale = new Vector3(rh, rh, rh);
+
+                            float xOffset = x + UnityEngine.Random.Range(-0.5f, 0.5f);
+                            float zOffset = z + UnityEngine.Random.Range(-0.5f, 0.5f);
+
+                            instancer.AddTree(new Vector3(xOffset, y, zOffset), Quaternion.Euler(-90, 0, 0), scale);
+
+                        }
+
+                    }
+
+                    if (UnityEngine.Random.Range(0, 100) > 90)
+                    {
+                        float rh = UnityEngine.Random.Range(90f, 110f);
+                        Vector3 scale = new Vector3(rh, rh, rh);
+
+                        float xOffset = x + UnityEngine.Random.Range(-0.5f, 0.5f);
+                        float zOffset = z + UnityEngine.Random.Range(-0.5f, 0.5f);
+
+                        instancer.AddBush(new Vector3(xOffset, y, zOffset), Quaternion.Euler(-90, 0, 0), scale);
+                    }
+
+                }
+
+                if (y < minHeight) minHeight = y;
+                if (y > maxHeight) maxHeight = y;
+
             }
+
         }
 
 
@@ -168,6 +175,7 @@ public class MeshGenerator : MonoBehaviour
         uvs = new Vector2[vertices.Length];
         colors = new Color[vertices.Length];
 
+
         for (int i = 0, z = 0; z <= zSize; z++)
         {
             for (int x = 0; x <= xSize; x++)
@@ -179,7 +187,10 @@ public class MeshGenerator : MonoBehaviour
                 i++;
             }
         }
+        // instancer.LogPositions();
+        instancer.Log();
     }
+
 
     void UpdateMesh()
     {

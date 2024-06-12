@@ -111,7 +111,7 @@ public class MeshGenerator : MonoBehaviour
                     {
                         if (UnityEngine.Random.Range(0, 100) > 70)
                         {
-                            float rh = UnityEngine.Random.Range(80f, 110f);
+                            float rh = UnityEngine.Random.Range(120f, 200f);
                             Vector3 scale = new Vector3(rh, rh, rh);
 
                             float xOffset = x + UnityEngine.Random.Range(-0.5f, 0.5f);

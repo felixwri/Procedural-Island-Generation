@@ -138,9 +138,9 @@ Material:
     - _foamAmmount: 20
     - _foamScale: 20
     - _foamSpeed: 0.4
-    - _rippleDesnity: 100
-    - _rippleSlimness: 10.9
-    - _transparency: 0.525
+    - _rippleDesnity: 5726
+    - _rippleSlimness: 15
+    - _transparency: 0.794
     - _waveheight: 0.01
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}

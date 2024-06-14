@@ -72,7 +72,7 @@ public class Instancer : MonoBehaviour
 
     public void Clear()
     {
-        Debug.Log("Clearing martices");
+        //Debug.Log("Clearing martices");
         tree.Clear();
         bush.Clear();
     }

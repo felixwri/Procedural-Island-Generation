@@ -42,6 +42,16 @@ public class Tile
         topLeft = temp;
     }
 
+    public void TurnBack()
+    {
+        Vector3 temp = bottomLeft;
+        bottomLeft = topRight;
+        topRight = temp;
+        temp = topLeft;
+        topLeft = bottomRight;
+        bottomRight = temp;
+    }
+
     public Tile Clone()
     {
         return new Tile(bottomLeft, topLeft, topRight, bottomRight);

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Tilemaps;
 
 public enum Direction
 {
@@ -40,7 +41,7 @@ public class Road
     }
 
     public Tile tile;
-    public Tile placedTile;
+    public Tile orientedTile;
 
     public MeshGenerator world;
 
@@ -50,11 +51,14 @@ public class Road
     public Road(Tile tile, Direction direction, MeshGenerator world)
     {
         this.tile = tile;
+
         this.position = tile.bottomLeft;
         this.direction = direction;
+
+        this.orientedTile = OrientedTile();
     }
 
-    public bool IsInclineUp()
+    private Tile OrientedTile()
     {
         Tile orientedTile = tile.Clone();
 
@@ -66,14 +70,24 @@ public class Road
         {
             orientedTile.TurnLeft();
         }
+        else if (direction == Direction.Backward)
+        {
+            orientedTile.TurnBack();
+        }
+        return orientedTile;
+    }
 
-
-
-        if (orientedTile.topLeft.y > orientedTile.bottomLeft.y)
+    public bool IsInclineUp()
+    {
+        if (orientedTile.bottomLeft.y == orientedTile.bottomRight.y && (
+            orientedTile.topLeft.y > orientedTile.bottomLeft.y ||
+            orientedTile.topRight.y > orientedTile.bottomRight.y))
         {
             return true;
         }
-        if (orientedTile.topRight.y > orientedTile.bottomRight.y)
+        if (orientedTile.bottomLeft.y != orientedTile.bottomRight.y && (
+            orientedTile.topLeft.y > orientedTile.bottomLeft.y &&
+            orientedTile.topRight.y > orientedTile.bottomRight.y))
         {
             return true;
         }
@@ -82,12 +96,15 @@ public class Road
 
     public bool IsInclineDown()
     {
-        Tile orientedTile = tile.Clone();
-        if (direction == Direction.Right)
+        if (orientedTile.bottomLeft.y == orientedTile.bottomRight.y && (
+            orientedTile.topLeft.y < orientedTile.bottomLeft.y &&
+            orientedTile.topRight.y < orientedTile.bottomRight.y))
         {
-            orientedTile.TurnRight();
+            return true;
         }
-        if (orientedTile.topLeft.y < orientedTile.bottomLeft.y)
+        if (orientedTile.bottomLeft.y != orientedTile.bottomRight.y && (
+            orientedTile.topLeft.y < orientedTile.bottomLeft.y ||
+            orientedTile.topRight.y < orientedTile.bottomRight.y))
         {
             return true;
         }
@@ -97,13 +114,28 @@ public class Road
     public Vector3 Place()
     {
         tile.isRoad = true;
-        return new Vector3(position.x + 0.5f, position.y, position.z + 0.5f);
+
+        Vector3 maxPosition = orientedTile.bottomLeft;
+        if (orientedTile.bottomRight.y > orientedTile.bottomLeft.y)
+        {
+            maxPosition = orientedTile.bottomRight;
+        }
+
+
+        return new Vector3(position.x + 0.5f, maxPosition.y, position.z + 0.5f);
     }
 
     public Vector3 Place(float x, float y, float z)
     {
         tile.isRoad = true;
-        return new Vector3(position.x + 0.5f + x, position.y + y, position.z + 0.5f + z);
+
+        Vector3 maxPosition = orientedTile.bottomLeft;
+        if (orientedTile.bottomRight.y > orientedTile.bottomLeft.y)
+        {
+            maxPosition = orientedTile.bottomRight;
+        }
+
+        return new Vector3(position.x + 0.5f + x, maxPosition.y + y, position.z + 0.5f + z);
     }
 
     public float Rotation()
@@ -123,7 +155,8 @@ public class RoadPlacer : MonoBehaviour
     public GameObject floor;
     public GameObject corner;
     public GameObject incline;
-    public GameObject incline_corner;
+    public GameObject incline_corner_left;
+    public GameObject incline_corner_right;
 
     public GameObject hoverObject;
 
@@ -279,18 +312,36 @@ public class RoadPlacer : MonoBehaviour
                 if (path[i + 1].Rotation() != path[i].Rotation())
                 {
                     Direction turn = TurnRight(i);
-                    print("TURN:::: " + turn.ToString());
                     if (turn == Direction.Right)
                     {
-                        GameObject prefab = Instantiate(corner, path[i].Place(), Quaternion.Euler(-90, path[i].Rotation(), 0));
-                        prefabs.Add(prefab);
-                        continue;
+                        if (path[i].IsInclineUp())
+                        {
+                            GameObject prefab = Instantiate(incline_corner_right, path[i].Place(), Quaternion.Euler(-90, path[i].Rotation(), 0));
+                            prefabs.Add(prefab);
+                            continue;
+                        }
+                        else
+                        {
+                            GameObject prefab = Instantiate(corner, path[i].Place(), Quaternion.Euler(-90, path[i].Rotation(), 0));
+                            prefabs.Add(prefab);
+                            continue;
+                        }
+
                     }
                     else if (turn == Direction.Left)
                     {
-                        GameObject prefab = Instantiate(corner, path[i].Place(), Quaternion.Euler(-90, path[i].Rotation() + 90, 0));
-                        prefabs.Add(prefab);
-                        continue;
+                        if (path[i].IsInclineUp())
+                        {
+                            GameObject prefab = Instantiate(incline_corner_left, path[i].Place(), Quaternion.Euler(-90, path[i].Rotation(), 0));
+                            prefabs.Add(prefab);
+                            continue;
+                        }
+                        else
+                        {
+                            GameObject prefab = Instantiate(corner, path[i].Place(), Quaternion.Euler(-90, path[i].Rotation() + 90, 0));
+                            prefabs.Add(prefab);
+                            continue;
+                        }
                     }
 
                 }
@@ -311,7 +362,20 @@ public class RoadPlacer : MonoBehaviour
                 prefabs.Add(prefab);
             }
         }
-        path = null;
+        // path = null;
+    }
+
+
+    void OnDrawGizmosSelected()
+    {
+        if (path == null) return;
+        for (int i = 0; i < path.Count; i++)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawSphere(path[i].orientedTile.bottomLeft, 0.1f);
+            Gizmos.color = Color.blue;
+            Gizmos.DrawSphere(path[i].orientedTile.topRight, 0.1f);
+        }
     }
 
     private void ClearPath()

@@ -24,23 +24,41 @@ public class Tile
         this.topRight = topRight;
     }
 
-    public void Rotate90()
+    public void TurnRight()
     {
-        Vector3 center = CalculateCenter();
-
-        bottomLeft = RotatePoint90(bottomLeft - center) + center;
-        topLeft = RotatePoint90(topLeft - center) + center;
-        topRight = RotatePoint90(topRight - center) + center;
-        bottomRight = RotatePoint90(bottomRight - center) + center;
+        Vector3 temp = bottomLeft;
+        bottomLeft = topLeft;
+        topLeft = topRight;
+        topRight = bottomRight;
+        bottomRight = temp;
     }
 
-    private Vector3 RotatePoint90(Vector3 point)
+    public void TurnLeft()
     {
-        return new Vector3(point.z, point.y, -point.x);
+        Vector3 temp = bottomLeft;
+        bottomLeft = bottomRight;
+        bottomRight = topRight;
+        topRight = topLeft;
+        topLeft = temp;
     }
 
-    private Vector3 CalculateCenter()
+    public void TurnBack()
     {
-        return (bottomLeft + topLeft + topRight + bottomRight) / 4;
+        Vector3 temp = bottomLeft;
+        bottomLeft = topRight;
+        topRight = temp;
+        temp = topLeft;
+        topLeft = bottomRight;
+        bottomRight = temp;
+    }
+
+    public Tile Clone()
+    {
+        return new Tile(bottomLeft, topLeft, topRight, bottomRight);
+    }
+
+    public override String ToString()
+    {
+        return "BottomLeft: " + bottomLeft + " TopLeft: " + topLeft + " TopRight: " + topRight + " BottomRight: " + bottomRight;
     }
 }

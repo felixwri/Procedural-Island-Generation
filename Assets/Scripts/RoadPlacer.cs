@@ -12,6 +12,14 @@ public enum Direction
     Backward = 180
 }
 
+public enum Pieces
+{
+    Floor = 0,
+    Corner = 1,
+    Incline = 2,
+    InclineCorner = 3,
+}
+
 public class Road
 {
     public Tile Left
@@ -32,6 +40,8 @@ public class Road
     }
 
     public Tile tile;
+    public Tile placedTile;
+
     public MeshGenerator world;
 
     public Vector3 position;
@@ -46,7 +56,24 @@ public class Road
 
     public bool IsInclineUp()
     {
-        if (tile.topLeft.y > tile.bottomLeft.y)
+        Tile orientedTile = tile.Clone();
+
+        if (direction == Direction.Right)
+        {
+            orientedTile.TurnRight();
+        }
+        else if (direction == Direction.Left)
+        {
+            orientedTile.TurnLeft();
+        }
+
+
+
+        if (orientedTile.topLeft.y > orientedTile.bottomLeft.y)
+        {
+            return true;
+        }
+        if (orientedTile.topRight.y > orientedTile.bottomRight.y)
         {
             return true;
         }
@@ -55,7 +82,12 @@ public class Road
 
     public bool IsInclineDown()
     {
-        if (tile.topLeft.y < tile.bottomLeft.y)
+        Tile orientedTile = tile.Clone();
+        if (direction == Direction.Right)
+        {
+            orientedTile.TurnRight();
+        }
+        if (orientedTile.topLeft.y < orientedTile.bottomLeft.y)
         {
             return true;
         }
@@ -91,6 +123,7 @@ public class RoadPlacer : MonoBehaviour
     public GameObject floor;
     public GameObject corner;
     public GameObject incline;
+    public GameObject incline_corner;
 
     public GameObject hoverObject;
 
@@ -212,6 +245,27 @@ public class RoadPlacer : MonoBehaviour
         }
     }
 
+    // LOL
+    private Direction TurnRight(int i)
+    {
+        Vector3 currentDirection = path[i].position - path[i - 1].position;
+        Vector3 nextDirection = path[i + 1].position - path[i].position;
+
+        float crossProduct = currentDirection.x * nextDirection.z - currentDirection.z * nextDirection.x;
+
+        float epsilon = 0.0001f; // You can adjust this value as needed
+
+        if (crossProduct > epsilon)
+        {
+            return Direction.Left;
+        }
+        else if (crossProduct < -epsilon)
+        {
+            return Direction.Right;
+        }
+        return Direction.Forward;
+    }
+
     private void PlacePath()
     {
         if (path == null) return;
@@ -219,15 +273,26 @@ public class RoadPlacer : MonoBehaviour
 
         for (int i = 0; i < path.Count; i++)
         {
-            Debug.Log("Placed -> " + path[i].position + ", " + path[i].Rotation());
-            if (i < path.Count - 1)
+            // Debug.Log("Placed -> " + path[i].position + ", " + path[i].Rotation());
+            if (i < path.Count - 1 && i > 0)
             {
                 if (path[i + 1].Rotation() != path[i].Rotation())
                 {
-                    float rotation = path[i + 1].Rotation() - path[i].Rotation();
-                    GameObject prefab = Instantiate(corner, path[i].Place(), Quaternion.Euler(-90, rotation, 0));
-                    prefabs.Add(prefab);
-                    continue;
+                    Direction turn = TurnRight(i);
+                    print("TURN:::: " + turn.ToString());
+                    if (turn == Direction.Right)
+                    {
+                        GameObject prefab = Instantiate(corner, path[i].Place(), Quaternion.Euler(-90, path[i].Rotation(), 0));
+                        prefabs.Add(prefab);
+                        continue;
+                    }
+                    else if (turn == Direction.Left)
+                    {
+                        GameObject prefab = Instantiate(corner, path[i].Place(), Quaternion.Euler(-90, path[i].Rotation() + 90, 0));
+                        prefabs.Add(prefab);
+                        continue;
+                    }
+
                 }
             }
             if (path[i].IsInclineUp())

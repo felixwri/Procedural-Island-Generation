@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class CameraMovement : MonoBehaviour
 {
+    public bool enableMovement = false;
     public GameObject playerCamera;
     private Transform player;
     public float mouseSensitivity;
@@ -22,17 +23,19 @@ public class CameraMovement : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        float xMovement =  Input.GetAxis("Horizontal");
-        float yMovement = Input.GetAxis("Vertical");
-        print(xMovement);
-        Vector3 move= new Vector3(xMovement, 0, yMovement);
-        move = Camera.main.transform.TransformDirection(move);
-        player.position += (move*playerSpeed);
-        print(player.position);
+        if(enableMovement == true){
+            float xMovement =  Input.GetAxis("Horizontal");
+            float yMovement = Input.GetAxis("Vertical");
+            print(xMovement);
+            Vector3 move= new Vector3(xMovement, 0, yMovement);
+            move = Camera.main.transform.TransformDirection(move);
+            player.position += (move*playerSpeed);
+            print(player.position);
 
-        if(Input.GetMouseButton(1)){
-            changeCamera();
+            if(Input.GetMouseButton(1)){
+                changeCamera();
 
+            }
         }
 
     }

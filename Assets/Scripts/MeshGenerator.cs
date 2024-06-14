@@ -14,7 +14,7 @@ public class MeshGenerator : MonoBehaviour
     Color[] colors;
 
     public Instancer instancer;
-    public int seed;
+    public int seed = 0;
 
     public int xSize = 40;
     public int zSize = 40;
@@ -50,7 +50,7 @@ public class MeshGenerator : MonoBehaviour
         UpdateMesh();
     }
 
-    void OnValidate()
+    public void OnValidate()
     {
          if (mesh == null)
          {

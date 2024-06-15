@@ -297,7 +297,7 @@ public class RoadPlacer : MonoBehaviour
             }
             if (path[i].IsInclineUp())
             {
-                GameObject prefab = Instantiate(incline, path[i].Place(), Quaternion.Euler(-90, path[i].Rotation(), 0));
+                GameObject prefab =  Instantiate(incline, path[i].Place(), Quaternion.Euler(-90, path[i].Rotation(), 0));
                 prefabs.Add(prefab);
             }
             else if (path[i].IsInclineDown())

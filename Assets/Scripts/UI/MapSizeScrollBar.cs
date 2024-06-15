@@ -6,15 +6,11 @@ using TMPro;
 
 public class MapSizeScrollBar : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
-    {
-        
+    public MeshGenerator Generator;
+    public TMP_InputField InputField;
+    
+    public void changeMapSize(){
+
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 }

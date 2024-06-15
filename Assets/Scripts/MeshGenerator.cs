@@ -28,6 +28,9 @@ public class MeshGenerator : MonoBehaviour
     public float terrainMaxHeight = 25f;
     public float waterLevel = 2f;
 
+    private Color black = new Color(0, 0, 0, 1);
+    private Color white = new Color(1, 1, 1, 1);
+
 
     public Color sea = new Color(0.1f, 0.1f, 0.7f, 1f);
     public Color shallow = new Color(0.2f, 0.2f, 0.8f, 1f);
@@ -102,8 +105,10 @@ public class MeshGenerator : MonoBehaviour
             {
                 float xCoord = x / (float)xSize * 2 - 1;
                 float zCoord = z / (float)zSize * 2 - 1;
-                float value = Mathf.Max(Mathf.Abs(xCoord), Mathf.Abs(zCoord));
-                points[z * (xSize + 1) + x] = (1 - value);
+                float value = 1 - Mathf.Max(Mathf.Abs(xCoord), Mathf.Abs(zCoord));
+                value = 1 / (1 + Mathf.Pow((value * 4) / (1 - value), -3f));
+                if (value > 1) value = 1f;
+                points[z * (xSize + 1) + x] = value;
             }
         }
 
@@ -125,19 +130,12 @@ public class MeshGenerator : MonoBehaviour
         {
             for (int x = 0; x <= xSize; x++)
             {
-
                 float y = Mathf.PerlinNoise((x + seed) * perlinScaleOne, (z + seed) * perlinScaleOne);
 
                 y *= terrainMaxHeight;
 
                 y *= falloffPoints[i];
                 //y = Mathf.Pow(1.1f,(1.3f*y))+2;
-
-
-
-
-
-
 
                 y = Mathf.Round(y * 2) / 2;
 
@@ -192,16 +190,11 @@ public class MeshGenerator : MonoBehaviour
     void GenerateColors()
     {
         uvs = new Vector2[vertices.Length];
-        // colors = new Color[vertices.Length];
-
 
         for (int i = 0, z = 0; z <= zSize; z++)
         {
             for (int x = 0; x <= xSize; x++)
             {
-                float height = Mathf.InverseLerp(minHeight, maxHeight, vertices[i].y);
-                // colors[i] = gradient.Evaluate(height);
-
                 uvs[i] = new Vector2((float)x / xSize, (float)z / zSize);
                 i++;
             }
@@ -271,8 +264,26 @@ public class MeshGenerator : MonoBehaviour
         instancer.Log();
     }
 
+    private void DebugColor(int x, float y, int z, int i, Color[] colors)
+    {
+
+        float noise = Mathf.PerlinNoise(seed + x * 0.02f, seed + z * 0.02f);
+        float[] falloff = FalloffMap();
+        colors[i] = gradient.Evaluate(falloff[i]);
+        // if (noise < 0.3f)
+        // {
+        //     colors[i] = black;
+        // }
+        // else
+        // {
+        //     colors[i] = white;
+        // }
+    }
+
     private void EvaluateColor(int x, float y, int z, int i, Color[] colors)
     {
+        DebugColor(x, y, z, i, colors);
+        return;
         float shallowWater = waterLevel - 1;
         if (y < shallowWater)
         {

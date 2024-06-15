@@ -50,7 +50,7 @@
     },
     "dotnet.defaultSolution": "Procedural-City-Builder.sln",
     "editor.tokenColorCustomizations": {
-        "[Material Theme Darker]": {
+        "[Material Theme Darker High Contrast]": {
             "textMateRules": [
                 {
                     "scope": "comment.documentation.attribute",

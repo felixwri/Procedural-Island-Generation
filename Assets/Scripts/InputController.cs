@@ -20,19 +20,20 @@ public class InputController : MonoBehaviour
 
     public LayerMask groundMask;
 
-    public Action<Vector3> OnMouseClick;
+    public Action<Vector3> OnLeftMouseClick;
+    public Action<Vector3> OnRightMouseClick;
     public Action<Vector3> OnMouseHover;
     public Action<Vector3> OnMouseHold;
     public Action<Vector3> OnMouseRelease;
     public Action ToggleRoadPlacer;
 
-    // void Start()W
-    // {
-    //     Cursor.lockState = CursorLockMode.Locked;
-    //     Cursor.visible = false;
-    // }
-
     void Update()
+    {
+        MouseInputs();
+        KeyboardInputs();
+    }
+
+    private void MouseInputs()
     {
         if (Input.GetKey(KeyCode.LeftAlt))
         {
@@ -74,10 +75,22 @@ public class InputController : MonoBehaviour
             Vector3? position = RaycastGround();
             if (position != null)
             {
-                OnMouseClick?.Invoke(position.Value);
+                OnLeftMouseClick?.Invoke(position.Value);
             }
         };
 
+        if (Input.GetMouseButtonDown(0))
+        {
+            Vector3? position = RaycastGround();
+            if (position != null)
+            {
+                OnRightMouseClick?.Invoke(position.Value);
+            }
+        };
+    }
+
+    private void KeyboardInputs()
+    {
         if (Input.GetKeyDown(KeyCode.T))
         {
             hover = !hover;

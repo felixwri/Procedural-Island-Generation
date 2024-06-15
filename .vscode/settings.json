@@ -48,5 +48,22 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "Procedural-City-Builder.sln"
+    "dotnet.defaultSolution": "Procedural-City-Builder.sln",
+    "editor.tokenColorCustomizations": {
+        "[Material Theme Darker]": {
+            "textMateRules": [
+                {
+                    "scope": "comment.documentation.attribute",
+                    "settings": {
+                        "foreground": "#C8C8C8",
+                    }
+                },
+                {
+                    "scope": "comment.documentation.name",
+                    "settings": {
+                        "foreground": "#d86666",
+                    }
+                },
+            ]
+        }}
 }

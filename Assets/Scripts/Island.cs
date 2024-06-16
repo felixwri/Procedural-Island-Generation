@@ -2,11 +2,13 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Mathematics;
 using Unity.VisualScripting;
+using Voronoi;
 using UnityEngine;
 
 
-public class MeshGenerator : MonoBehaviour
+public class Island : MonoBehaviour
 {
     Mesh mesh;
 
@@ -44,6 +46,12 @@ public class MeshGenerator : MonoBehaviour
 
     public float treeNoise = 1f;
     public float treeActivationAmount = 1f;
+
+    public float ocCarverPos = 100;
+
+    VoronoiNoise DebugNoise = new VoronoiNoise(0, 0.008f);
+
+    float[] falloffMap;
 
     float minHeight;
     float maxHeight;
@@ -123,8 +131,7 @@ public class MeshGenerator : MonoBehaviour
 
         vertices = new Vector3[(xSize + 1) * (zSize + 1)];
         colors = new Color[vertices.Length];
-
-        float[] falloffPoints = FalloffMap();
+        falloffMap = FalloffMap();
 
         for (int z = 0, i = 0; z <= zSize; z++)
         {
@@ -132,16 +139,28 @@ public class MeshGenerator : MonoBehaviour
             {
                 float y = Mathf.PerlinNoise((x + seed) * perlinScaleOne, (z + seed) * perlinScaleOne);
 
+                float riverSample = DebugNoise.Sample2D(x, z) * 8;
+
+                y *= riverSample;
+
                 y *= terrainMaxHeight;
 
-                y *= falloffPoints[i];
-                //y = Mathf.Pow(1.1f,(1.3f*y))+2;
+                y *= falloffMap[i];
+
+                // float mountain = Mathf.PerlinNoise(100 + seed + x * 0.05f, seed + z * 0.05f);
+
+                if (y > waterLevel)
+                {
+                    y = waterLevel + (y - waterLevel) * 0.4f;
+                }
+
+                // y += mountain;
 
                 y = Mathf.Round(y * 2) / 2;
 
                 EvaluateColor(x, y, z, i, colors);
 
-                // if (y < waterLevel) y = waterLevel;
+                if (y < waterLevel) y = waterLevel;
 
                 vertices[i] = new Vector3(x, y, z);
                 i++;
@@ -172,7 +191,14 @@ public class MeshGenerator : MonoBehaviour
         {
             for (int x = 0; x < xSize; x++)
             {
-
+                if (vertices[vert].y <= waterLevel
+                    && vertices[vert + xSize + 1].y <= waterLevel
+                    && vertices[vert + 1].y <= waterLevel
+                    && vertices[vert + xSize + 2].y <= waterLevel)
+                {
+                    vert++;
+                    continue;
+                }
                 triangles[tris + 0] = vert;
                 triangles[tris + 1] = vert + xSize + 1;
                 triangles[tris + 2] = vert + 1;
@@ -187,6 +213,7 @@ public class MeshGenerator : MonoBehaviour
         }
     }
 
+
     void GenerateColors()
     {
         uvs = new Vector2[vertices.Length];
@@ -199,7 +226,6 @@ public class MeshGenerator : MonoBehaviour
                 i++;
             }
         }
-
     }
 
     void GenerateFeatures()
@@ -266,10 +292,12 @@ public class MeshGenerator : MonoBehaviour
 
     private void DebugColor(int x, float y, int z, int i, Color[] colors)
     {
+        // float noise = DebugNoise.Sample2D(x, z);
+        // colors[i] = gradient.Evaluate(noise);
 
-        float noise = Mathf.PerlinNoise(seed + x * 0.02f, seed + z * 0.02f);
-        float[] falloff = FalloffMap();
-        colors[i] = gradient.Evaluate(falloff[i]);
+        // Color col = DebugNoise.Sample2DColor(x, z);
+        // colors[i] = col;
+
         // if (noise < 0.3f)
         // {
         //     colors[i] = black;
@@ -282,18 +310,7 @@ public class MeshGenerator : MonoBehaviour
 
     private void EvaluateColor(int x, float y, int z, int i, Color[] colors)
     {
-        DebugColor(x, y, z, i, colors);
-        return;
-        float shallowWater = waterLevel - 1;
-        if (y < shallowWater)
-        {
-            colors[i] = sea;
-        }
-        else if (y >= shallowWater && y < waterLevel)
-        {
-            colors[i] = shallow;
-        }
-        else if (y == waterLevel)
+        if (y == waterLevel)
         {
             colors[i] = shore;
         }
@@ -331,5 +348,44 @@ public class MeshGenerator : MonoBehaviour
         mesh.RecalculateNormals();
 
         GetComponent<MeshCollider>().sharedMesh = mesh;
+
+        GenerateUnderside();
+    }
+
+    void GenerateUnderside()
+    {
+        Vector3[] clonedVertices = new Vector3[vertices.Length];
+        Array.Copy(vertices, clonedVertices, vertices.Length);
+
+        int[] clonedTriangles = new int[triangles.Length];
+        Array.Copy(triangles, clonedTriangles, triangles.Length);
+
+        Color[] underSideColors = new Color[clonedVertices.Length];
+        for (int i = 0; i < underSideColors.Length; i++)
+        {
+            underSideColors[i] = new Color(0.1f, 0.1f, 0.1f, 1f);
+        }
+
+        GameObject newObject = new GameObject("UnderSide");
+        newObject.transform.parent = transform;
+
+        newObject.AddComponent<MeshFilter>();
+        newObject.AddComponent<MeshRenderer>();
+
+        Mesh newMesh = new()
+        {
+            vertices = clonedVertices,
+            triangles = clonedTriangles,
+            colors = underSideColors
+        };
+
+        newObject.GetComponent<MeshFilter>().mesh = newMesh;
+
+        newObject.GetComponent<MeshRenderer>().material = transform.GetComponent<MeshRenderer>().material;
+
+        newMesh.RecalculateNormals();
+
+        newObject.transform.position = new Vector3(0, 12, 0);
+        newObject.transform.localScale = new Vector3(1, -5, 1);
     }
 }

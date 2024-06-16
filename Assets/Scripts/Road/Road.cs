@@ -26,12 +26,12 @@ public class Road
     public Tile tile;
     public Tile orientedTile;
 
-    public MeshGenerator world;
+    public Island world;
 
     public Vector3 position;
     public Direction direction;
 
-    public Road(Tile tile, Direction direction, MeshGenerator world)
+    public Road(Tile tile, Direction direction, Island world)
     {
         this.tile = tile;
 

@@ -23,7 +23,7 @@ public enum Pieces
 public class RoadPlacer : MonoBehaviour
 {
     public InputController inputController;
-    public MeshGenerator world;
+    public Island world;
 
     private List<GameObject> prefabs;
 

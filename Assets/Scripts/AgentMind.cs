@@ -8,7 +8,7 @@ using UnityEngine;
 public class AgentMind : MonoBehaviour
 {
     public InputController inputController;
-    public MeshGenerator world;
+    public Island world;
 
     Vector3 velocity = Vector3.zero;
     public Vector3 acceleration = new Vector3(0.01f, 0.01f, 0.01f);

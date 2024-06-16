@@ -16,7 +16,10 @@ public class Tile
     public bool isRoad = false;
     public bool containsTree = false;
 
-    public int islandIndex = -1;
+    public bool temp = false;
+
+    public Color color = Color.black;
+    public float islandIndex = 0;
 
     public Tile(Vector3 bottomLeft, Vector3 topLeft, Vector3 topRight, Vector3 bottomRight)
     {

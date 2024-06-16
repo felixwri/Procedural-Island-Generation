@@ -1716,7 +1716,7 @@ GameObject:
   - component: {fileID: 1014447981}
   - component: {fileID: 1014447980}
   m_Layer: 0
-  m_Name: Terrain
+  m_Name: Island
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

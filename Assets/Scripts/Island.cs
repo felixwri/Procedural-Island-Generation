@@ -1,12 +1,8 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.Mathematics;
-using Unity.VisualScripting;
 using Voronoi;
 using UnityEngine;
-using UnityEditor;
 
 
 public class Point
@@ -29,52 +25,59 @@ public class Point
         this.y = vector.y;
         this.z = vector.z;
     }
+
+    public static implicit operator Vector3(Point p)
+    {
+        return new Vector3(p.x, p.y, p.z);
+    }
+
+    public static implicit operator Point(Vector3 v)
+    {
+        return new Point(v);
+    }
 }
 
 public class Island : MonoBehaviour
 {
     Mesh mesh;
-    private GameObject underside;
+    GameObject underside;
 
     Vector3[] vertices;
+    Vector3[] undersideVertices;
+
     Point[] points;
     Tile[] tiles;
 
     Vector2[] uvs;
+
     int[] triangles;
+    int[] undersideTriangles;
+
     Color[] colors;
 
     public Instancer instancer;
+
     public int seed = 0;
 
     public int xSize = 40;
     public int zSize = 40;
 
+    public int heightDelta = 2;
+
     public float perlinScaleOne = 0.05f;
-
     public float terrainMaxHeight = 25f;
+
     public float waterLevel = 2f;
-
-    private Color black = new Color(0, 0, 0, 1);
-    private Color white = new Color(1, 1, 1, 1);
-
-
-    public Color sea = new Color(0.1f, 0.1f, 0.7f, 1f);
-    public Color shallow = new Color(0.2f, 0.2f, 0.8f, 1f);
-    public Color land = new Color(0.1f, 0.6f, 0.2f, 1f);
-    public Color arid = new Color(0.3f, 0.6f, 0.2f, 1f);
-    public Color green = new Color(0.1f, 0.55f, 0.25f, 1f);
-    public Color shore = new Color(0.6f, 0.6f, 0.3f, 1f);
-    public Color mountain = new Color(0.35f, 0.32f, 0.3f, 1f);
 
     public Gradient gradient;
 
     public float treeNoise = 1f;
-    public float treeActivationAmount = 1f;
-
-    public float ocCarverPos = 100;
+    public float firAmount = 0.1f;
+    public float oakAmount = 0.1f;
 
     VoronoiNoise DebugNoise = new VoronoiNoise(0, 0.008f);
+
+    // List<Point> DebugPoints = new List<Point>();
 
     float[] falloffMap;
 
@@ -87,7 +90,7 @@ public class Island : MonoBehaviour
         DebugNoise = new VoronoiNoise(seed, 0.008f);
         mesh = new Mesh();
         GetComponent<MeshFilter>().mesh = mesh;
-        CreateShape();
+        Generate();
         UpdateMesh();
     }
 
@@ -99,37 +102,24 @@ public class Island : MonoBehaviour
         }
         DebugNoise = new VoronoiNoise(seed, 0.008f);
         instancer.Clear();
-        CreateShape();
+        Generate();
         UpdateMesh();
     }
 
-    public Vector3 GetVertice(int x, int z)
-    {
-        return vertices[z * (xSize + 1) + x];
-    }
 
-    public Tile GenerateTile(int x, int z)
-    {
-        Tile tile = new Tile(
-            GetVertice(x, z),
-            GetVertice(x, z + 1),
-            GetVertice(x + 1, z + 1),
-            GetVertice(x + 1, z)
-            );
-        return tile;
-    }
+    public Vector3 GetVertice(int x, int z) => vertices[z * (xSize + 1) + x];
 
-    public Tile GetTile(int x, int z)
-    {
-        Tile tile = tiles[z * zSize + x];
-        return tile;
-    }
+    public Point GetPoint(int x, int z) => points[z * (xSize + 1) + x];
 
-    public bool IsWater(int x, int z)
-    {
-        return vertices[z * (xSize + 1) + x].y < waterLevel;
-    }
+    public Tile GetTile(int x, int z) => tiles[z * zSize + x];
 
+    public bool IsWater(int x, int z) => vertices[z * (xSize + 1) + x].y < waterLevel;
+
+    /// <summary>
+    /// Creates a transition between the edge of the map and the center.
+    /// Uses a funky equation to determine the falloff curve
+    /// </summary>
+    /// <returns>An array of floats between 0 and 1</returns>
     float[] FalloffMap()
     {
         float[] points = new float[(xSize + 1) * (zSize + 1)];
@@ -140,7 +130,10 @@ public class Island : MonoBehaviour
                 float xCoord = x / (float)xSize * 2 - 1;
                 float zCoord = z / (float)zSize * 2 - 1;
                 float value = 1 - Mathf.Max(Mathf.Abs(xCoord), Mathf.Abs(zCoord));
+
+                // Funky equation
                 value = 1 / (1 + Mathf.Pow((value * 4) / (1 - value), -3f));
+
                 if (value > 1) value = 1f;
                 points[z * (xSize + 1) + x] = value;
             }
@@ -149,14 +142,20 @@ public class Island : MonoBehaviour
         return points;
     }
 
-    // Update is called once per frame
-    void CreateShape()
+    /// <summary>
+    /// Builds the vertices and the triangles of both the top mesh and the underside mesh.
+    /// </summary>
+    void Generate()
     {
         minHeight = Mathf.Infinity;
         maxHeight = -Mathf.Infinity;
 
         vertices = new Vector3[(xSize + 1) * (zSize + 1)];
+
+        undersideVertices = new Vector3[vertices.Length];
         points = new Point[vertices.Length];
+
+        uvs = new Vector2[vertices.Length];
 
         colors = new Color[vertices.Length];
         falloffMap = FalloffMap();
@@ -175,22 +174,21 @@ public class Island : MonoBehaviour
 
                 y *= falloffMap[i];
 
-                // float mountain = Mathf.PerlinNoise(100 + seed + x * 0.05f, seed + z * 0.05f);
-
+                // Flattens the terrain above the waterlevel
                 if (y > waterLevel)
                 {
                     y = waterLevel + (y - waterLevel) * 0.4f;
                 }
 
-                // y += mountain;
-
                 y = Mathf.Round(y * 2) / 2;
-
-                EvaluateColor(x, y, z, i, colors);
 
                 if (y < waterLevel) y = waterLevel;
 
                 vertices[i] = new Vector3(x, y, z);
+                undersideVertices[i] = new Vector3(x, (-(y - waterLevel * 2) * 3) - (waterLevel * 2), z);
+
+                uvs[i] = new Vector2((float)x / xSize, (float)z / zSize);
+
                 points[i] = new Point(x, y, z);
 
                 i++;
@@ -202,18 +200,35 @@ public class Island : MonoBehaviour
 
         GenerateMesh();
 
-        GenerateColors();
+        Seperator();
 
-        BFS();
+        ModifyVerticies();
 
         GenerateFeatures();
 
         Debug.Log("Tiles: " + tiles.Count());
     }
 
+    /// <summary>
+    /// Applies on offset based on the points id.
+    /// </summary>
+    void ModifyVerticies()
+    {
+
+        for (int i = 0; i < points.Length; i++)
+        {
+            Point point = points[i];
+            int vertexIndex = (int)point.z * (xSize + 1) + (int)point.x;
+            float yOffset = (point.id % 10) * heightDelta;
+            undersideVertices[vertexIndex].y -= yOffset;
+            vertices[vertexIndex].y -= yOffset;
+        }
+    }
+
     void GenerateMesh()
     {
         triangles = new int[xSize * zSize * 6];
+        undersideTriangles = new int[xSize * zSize * 6];
         int vert = 0;
         int tris = 0;
 
@@ -232,9 +247,18 @@ public class Island : MonoBehaviour
                 triangles[tris + 0] = vert;
                 triangles[tris + 1] = vert + xSize + 1;
                 triangles[tris + 2] = vert + 1;
+
                 triangles[tris + 3] = vert + 1;
                 triangles[tris + 4] = vert + xSize + 1;
                 triangles[tris + 5] = vert + xSize + 2;
+
+                undersideTriangles[tris + 0] = vert;
+                undersideTriangles[tris + 1] = vert + 1;
+                undersideTriangles[tris + 2] = vert + xSize + 1;
+
+                undersideTriangles[tris + 3] = vert + 1;
+                undersideTriangles[tris + 4] = vert + xSize + 2;
+                undersideTriangles[tris + 5] = vert + xSize + 1;
 
                 vert++;
                 tris += 6;
@@ -243,21 +267,10 @@ public class Island : MonoBehaviour
         }
     }
 
-
-    void GenerateColors()
-    {
-        uvs = new Vector2[vertices.Length];
-
-        for (int i = 0, z = 0; z <= zSize; z++)
-        {
-            for (int x = 0; x <= xSize; x++)
-            {
-                uvs[i] = new Vector2((float)x / xSize, (float)z / zSize);
-                i++;
-            }
-        }
-    }
-
+    /// <summary>
+    /// Places the foliage on the terrain based on the perlin noise. <br/>
+    /// Creates a tile for each vertice.
+    /// </summary>
     void GenerateFeatures()
     {
         tiles = new Tile[xSize * zSize];
@@ -266,6 +279,7 @@ public class Island : MonoBehaviour
         {
             for (int x = 0; x <= xSize - 1; x++)
             {
+
                 Tile tile = new Tile(
                     GetVertice(x, z),
                     GetVertice(x, z + 1),
@@ -275,15 +289,22 @@ public class Island : MonoBehaviour
 
                 float y = tile.bottomLeft.y;
 
-                if (y < waterLevel)
+                Point point = points[z * (xSize + 1) + x];
+
+                float yOffset = (point.id % 10) * heightDelta;
+
+                float normalisedHeight = y + yOffset;
+
+                EvaluateColor(x, normalisedHeight, z, i, point.id);
+
+                if (point.id == 0)
                 {
                     tile.isWater = true;
                 }
-
-                if (y > waterLevel)
+                else if (normalisedHeight < 12)
                 {
                     float tn = Mathf.PerlinNoise(x * treeNoise, z * treeNoise);
-                    if (tn > treeActivationAmount)
+                    if (tn > oakAmount)
                     {
                         if (UnityEngine.Random.Range(0, 100) > 70)
                         {
@@ -293,7 +314,22 @@ public class Island : MonoBehaviour
                             float xOffset = x + UnityEngine.Random.Range(-0.5f, 0.5f);
                             float zOffset = z + UnityEngine.Random.Range(-0.5f, 0.5f);
 
-                            instancer.AddTree(new Vector3(xOffset, y, zOffset), Quaternion.Euler(-90, 0, 0), scale);
+                            instancer.AddOak(new Vector3(xOffset, y, zOffset), Quaternion.Euler(-90, 0, 0), scale);
+                            tile.containsTree = true;
+                        }
+
+                    }
+                    else if (tn < firAmount)
+                    {
+                        if (UnityEngine.Random.Range(0, 100) > 70)
+                        {
+                            float rh = UnityEngine.Random.Range(120f, 200f);
+                            Vector3 scale = new Vector3(rh, rh, rh);
+
+                            float xOffset = x + UnityEngine.Random.Range(-0.5f, 0.5f);
+                            float zOffset = z + UnityEngine.Random.Range(-0.5f, 0.5f);
+
+                            instancer.AddFir(new Vector3(xOffset, y, zOffset), Quaternion.Euler(-90, 0, 0), scale);
                             tile.containsTree = true;
                         }
 
@@ -321,25 +357,11 @@ public class Island : MonoBehaviour
     }
 
 
-    void BFS()
+    /// <summary>
+    /// Uses a breadth first seach to find the islands.
+    /// </summary>
+    void Seperator()
     {
-        Point GetLeft(int x, int z)
-        {
-            return points[z * (xSize + 1) + x - 1];
-        }
-        Point GetRight(int x, int z)
-        {
-            return points[z * (xSize + 1) + x + 1];
-        }
-        Point GetTop(int x, int z)
-        {
-            return points[(z + 1) * (xSize + 1) + x];
-        }
-        Point GetBottom(int x, int z)
-        {
-            return points[(z - 1) * (xSize + 1) + x];
-        }
-        int[] randomIds = { 1, 2, 3, 4, 5 };
         int islands = 0;
 
         for (int j = 0; j < zSize; j++)
@@ -354,8 +376,10 @@ public class Island : MonoBehaviour
 
                     islands++;
 
-                    int id = randomIds[UnityEngine.Random.Range(0, randomIds.Length)];
+                    int id = UnityEngine.Random.Range(1000, 9999);
+
                     point.id = id;
+
                     List<Point> unvisitedPoints = new List<Point>();
                     unvisitedPoints.Add(point);
 
@@ -366,7 +390,7 @@ public class Island : MonoBehaviour
 
                         if (current.x > 0)
                         {
-                            Point left = GetLeft((int)current.x, (int)current.z);
+                            Point left = GetPoint((int)current.x - 1, (int)current.z);
                             if (left.id == 0 && left.y > waterLevel)
                             {
                                 left.id = id;
@@ -375,7 +399,7 @@ public class Island : MonoBehaviour
                         }
                         if (current.x < xSize)
                         {
-                            Point right = GetRight((int)current.x, (int)current.z);
+                            Point right = GetPoint((int)current.x + 1, (int)current.z);
                             if (right.id == 0 && right.y > waterLevel)
                             {
                                 right.id = id;
@@ -384,7 +408,7 @@ public class Island : MonoBehaviour
                         }
                         if (current.z > 0)
                         {
-                            Point bottom = GetBottom((int)current.x, (int)current.z);
+                            Point bottom = GetPoint((int)current.x, (int)current.z - 1);
                             if (bottom.id == 0 && bottom.y > waterLevel)
                             {
                                 bottom.id = id;
@@ -393,21 +417,38 @@ public class Island : MonoBehaviour
                         }
                         if (current.z < zSize)
                         {
-                            Point top = GetTop((int)current.x, (int)current.z);
+                            Point top = GetPoint((int)current.x, (int)current.z + 1);
                             if (top.id == 0 && top.y > waterLevel)
                             {
                                 top.id = id;
                                 unvisitedPoints.Add(top);
                             }
                         }
+                        if (current.x > 0 && current.z < zSize)
+                        {
+                            Point topLeft = GetPoint((int)current.x - 1, (int)current.z + 1);
+                            if (topLeft.id == 0 && topLeft.y > waterLevel)
+                            {
+                                topLeft.id = id;
+                                unvisitedPoints.Add(topLeft);
+                            }
+                        }
+                        if (current.x < xSize && current.z < zSize)
+                        {
+                            Point topRight = GetPoint((int)current.x + 1, (int)current.z + 1);
+                            if (topRight.id == 0 && topRight.y > waterLevel)
+                            {
+                                topRight.id = id;
+                                unvisitedPoints.Add(topRight);
+                            }
+                        }
                     }
                 };
             }
         }
-        Debug.Log("Islands: " + islands);
-        return;
+        Debug.Log("Number of islands: " + islands);
 
-        for (int z = 0, i = 0; z <= zSize; z++)
+        for (int z = 0; z <= zSize; z++)
         {
             for (int x = 0; x <= xSize; x++)
             {
@@ -415,85 +456,119 @@ public class Island : MonoBehaviour
 
                 if (x > 0)
                 {
-                    Point left = GetLeft(x, z);
-                    maxId = Math.Max(maxId, left.id);
+                    Point left = GetPoint(x - 1, z);
+                    if (left.y > waterLevel)
+                    {
+                        maxId = Mathf.Max(maxId, left.id);
+                    }
                 }
                 if (x < xSize)
                 {
-                    Point right = GetRight(x, z);
-                    maxId = Math.Max(maxId, right.id);
+                    Point right = GetPoint(x + 1, z);
+                    if (right.y > waterLevel)
+                    {
+                        maxId = Mathf.Max(maxId, right.id);
+                    }
                 }
                 if (z > 0)
                 {
-                    Point bottom = GetBottom(x, z);
-                    maxId = Math.Max(maxId, bottom.id);
+                    Point bottom = GetPoint(x, z - 1);
+                    if (bottom.y > waterLevel)
+                    {
+                        maxId = Mathf.Max(maxId, bottom.id);
+                    }
                 }
                 if (z < zSize)
                 {
-                    Point top = GetTop(x, z);
-                    maxId = Math.Max(maxId, top.id);
+                    Point top = GetPoint(x, z + 1);
+                    if (top.y > waterLevel)
+                    {
+                        maxId = Mathf.Max(maxId, top.id);
+                    }
+                }
+                if (x > 0 && z < zSize)
+                {
+                    Point topLeft = GetPoint(x - 1, z + 1);
+                    if (topLeft.y > waterLevel)
+                    {
+                        maxId = Mathf.Max(maxId, topLeft.id);
+                    }
+                }
+                if (x < xSize && z < zSize)
+                {
+                    Point topRight = GetPoint(x + 1, z + 1);
+                    if (topRight.y > waterLevel)
+                    {
+                        maxId = Mathf.Max(maxId, topRight.id);
+                    }
+                }
+                if (x > 0 && z > 0)
+                {
+                    Point bottomLeft = GetPoint(x - 1, z - 1);
+                    if (bottomLeft.y > waterLevel)
+                    {
+                        maxId = Mathf.Max(maxId, bottomLeft.id);
+                    }
+                }
+                if (x < xSize && z > 0)
+                {
+                    Point bottomRight = GetPoint(x + 1, z - 1);
+                    if (bottomRight.y > waterLevel)
+                    {
+                        maxId = Mathf.Max(maxId, bottomRight.id);
+                    }
                 }
 
-                points[z * (xSize + 1) + x].id = maxId;
+                if (maxId != 0)
+                {
+                    points[z * (xSize + 1) + x].id = maxId;
+                }
             }
         }
     }
 
-    private void EvaluateColor(int x, float y, int z, int i, Color[] colors)
+    /// <summary>
+    /// Evaluates the color of the vertex based on the height and the perlin noise.
+    /// </summary>
+    private void EvaluateColor(int x, float y, int z, int i, int id)
     {
-        if (y == waterLevel)
+        float idColorOffset = id % 10;
+        idColorOffset /= 20;
+
+        int index = z * (xSize + 1) + x;
+
+        Color land = new Color(0.1f, 0.6f, 0.2f, 1f);
+        Color arid = new Color(0.3f, 0.6f, 0.2f, 1f);
+        Color green = new Color(0.1f, 0.55f + idColorOffset, 0.25f, 1f);
+        Color shore = new Color(0.6f, 0.6f, 0.3f, 1f);
+        Color mountain = new Color(0.35f, 0.32f, 0.3f, 1f);
+
+        if (y > 8)
         {
-            colors[i] = shore;
-        }
-        else if (y > waterLevel * 5)
-        {
-            colors[i] = mountain;
-        }
-        else
-        {
-            float noise = Mathf.PerlinNoise(100 + x * 0.05f, 100 + z * 0.05f);
-            if (noise < 0.3f)
+            if (y > 16)
             {
-                colors[i] = green;
-            }
-            else if (noise > 0.8f)
-            {
-                colors[i] = arid;
+                colors[index] = Color.white;
             }
             else
             {
-                colors[i] = land;
+                colors[index] = mountain;
             }
+        }
+        else
+        {
+            colors[index] = green;
         }
     }
 
+    /// <summary>
+    /// Applys the generated mesh to the mesh and underside mesh
+    /// </summary>
     void UpdateMesh()
     {
-        Color[] randomColors = { Color.black, Color.red, Color.green, Color.blue, Color.yellow, Color.magenta };
         mesh.Clear();
-
-
-        // for (int i = 0; i < points.Length; i++)
-        // {
-        //     Point point = points[i];
-        //     int vertexIndex = (int)point.z * (xSize + 1) + (int)point.x;
-        //     float yOffset = point.id;
-        //     vertices[vertexIndex].y += yOffset;
-        // }
-
 
         mesh.vertices = vertices;
         mesh.triangles = triangles;
-
-        if (points == null)
-        {
-            return;
-        }
-        for (int i = 0; i < points.Length; i++)
-        {
-            Point point = points[i];
-            colors[(int)point.z * (xSize + 1) + (int)point.x] = randomColors[point.id];
-        }
 
         mesh.colors = colors;
         mesh.uv = uvs;
@@ -505,24 +580,12 @@ public class Island : MonoBehaviour
         GenerateUnderside();
     }
 
+    /// <summary>
+    /// Updates the vertices of the underside mesh. Will generate the underside GameObject if it does not exist.
+    /// </summary>
     void GenerateUnderside()
     {
-        Vector3[] clonedVertices = new Vector3[vertices.Length];
-        Array.Copy(vertices, clonedVertices, vertices.Length);
-
-        // for (int i = 0; i < points.Length; i++)
-        // {
-        //     Point point = points[i];
-        //     int vertexIndex = (int)point.z * (xSize + 1) + (int)point.x;
-        //     float yOffset = point.id;
-        //     clonedVertices[vertexIndex].y -= yOffset;
-        // }
-
-
-        int[] clonedTriangles = new int[triangles.Length];
-        Array.Copy(triangles, clonedTriangles, triangles.Length);
-
-        Color[] underSideColors = new Color[clonedVertices.Length];
+        Color[] underSideColors = new Color[undersideVertices.Length];
         for (int i = 0; i < underSideColors.Length; i++)
         {
             underSideColors[i] = new Color(0.1f, 0.1f, 0.1f, 1f);
@@ -537,11 +600,10 @@ public class Island : MonoBehaviour
             underside.AddComponent<MeshRenderer>();
         }
 
-
         Mesh newMesh = new()
         {
-            vertices = clonedVertices,
-            triangles = clonedTriangles,
+            vertices = undersideVertices,
+            triangles = undersideTriangles,
             colors = underSideColors
         };
 
@@ -551,7 +613,6 @@ public class Island : MonoBehaviour
 
         newMesh.RecalculateNormals();
 
-        underside.transform.position = new Vector3(0, 12, 0);
-        underside.transform.localScale = new Vector3(1, -5, 1);
+        underside.transform.position = new Vector3(0, 0, 0);
     }
 }

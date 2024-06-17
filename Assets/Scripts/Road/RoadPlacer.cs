@@ -23,7 +23,7 @@ public enum Pieces
 public class RoadPlacer : MonoBehaviour
 {
     public InputController inputController;
-    public MeshGenerator world;
+    public Island world;
 
     private List<GameObject> prefabs;
 
@@ -82,6 +82,7 @@ public class RoadPlacer : MonoBehaviour
         if (!active) return;
         Debug.Log("Clicked on " + position);
         startingPosition = Snap(position);
+        endingPosition = Snap(position);
     }
 
     private void OnMouseHold(Vector3 position)
@@ -127,6 +128,11 @@ public class RoadPlacer : MonoBehaviour
     /// </summary>
     private void CalculatePath()
     {
+        if (world.GetPoint((int)startingPosition.x, (int)startingPosition.z).id != world.GetPoint((int)endingPosition.x, (int)endingPosition.z).id)
+        {
+            return;
+        }
+
         path = new List<Road>();
 
         int expectedDistance = (int)Mathf.Abs(endingPosition.x - startingPosition.x) + (int)Mathf.Abs(endingPosition.z - startingPosition.z);

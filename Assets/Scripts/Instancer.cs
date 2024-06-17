@@ -47,23 +47,32 @@ public class InstancedPrefab
 
 public class Instancer : MonoBehaviour
 {
-    public GameObject treePrefab;
+    public GameObject firPrefab;
+    public GameObject oakPrefab;
     public GameObject bushPrefab;
 
-    private readonly InstancedPrefab tree = new();
+    private readonly InstancedPrefab fir = new();
+    private readonly InstancedPrefab oak = new();
     private readonly InstancedPrefab bush = new();
 
     // Start is called before the first frame update
     void Start()
     {
-        tree.Init(treePrefab);
+        fir.Init(firPrefab);
+        oak.Init(oakPrefab);
         bush.Init(bushPrefab);
     }
 
-    public void AddTree(Vector3 position, Quaternion rotation, Vector3 scale)
+    public void AddFir(Vector3 position, Quaternion rotation, Vector3 scale)
     {
-        tree.Add(position, rotation, scale);
+        fir.Add(position, rotation, scale);
     }
+
+    public void AddOak(Vector3 position, Quaternion rotation, Vector3 scale)
+    {
+        oak.Add(position, rotation, scale);
+    }
+
 
     public void AddBush(Vector3 position, Quaternion rotation, Vector3 scale)
     {
@@ -73,19 +82,23 @@ public class Instancer : MonoBehaviour
     public void Clear()
     {
         //Debug.Log("Clearing martices");
-        tree.Clear();
+        fir.Clear();
+        oak.Clear();
         bush.Clear();
     }
 
     public void Log()
     {
-        Debug.Log("Tree Matrices: " + tree.Count());
+        Debug.Log("Fir Trees Matrices: " + fir.Count());
+        Debug.Log("Oak Trees Matrices: " + oak.Count());
         Debug.Log("Bush Matrices: " + bush.Count());
     }
 
     void Update()
     {
-        tree.Update();
+        if (fir == null || oak == null || bush == null) return;
+        fir.Update();
+        oak.Update();
         bush.Update();
     }
 }

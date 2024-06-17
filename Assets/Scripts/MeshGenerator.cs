@@ -29,8 +29,8 @@ public class MeshGenerator : MonoBehaviour
     public float waterLevel = 2f;
 
 
-    public Color sea = new Color(0.1f, 0.1f, 0.7f, 1f);
-    public Color shallow = new Color(0.2f, 0.2f, 0.8f, 1f);
+    public Color sea = new Color(0.1f, 0.1f, 0.7f, 0f);
+    public Color shallow = new Color(0.2f, 0.2f, 0.8f, 0f);
     public Color land = new Color(0.1f, 0.6f, 0.2f, 1f);
     public Color arid = new Color(0.3f, 0.6f, 0.2f, 1f);
     public Color green = new Color(0.1f, 0.55f, 0.25f, 1f);
@@ -174,6 +174,14 @@ public class MeshGenerator : MonoBehaviour
         {
             for (int x = 0; x < xSize; x++)
             {
+                if (vertices[vert].y <= waterLevel
+                    && vertices[vert + xSize + 1].y <= waterLevel
+                    && vertices[vert + 1].y <= waterLevel
+                    && vertices[vert + xSize + 2].y <= waterLevel)
+                {
+                    vert++;
+                    continue;
+                }
 
                 triangles[tris + 0] = vert;
                 triangles[tris + 1] = vert + xSize + 1;

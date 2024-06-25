@@ -4,39 +4,6 @@ using System.Linq;
 using Voronoi;
 using UnityEngine;
 
-
-public class Point
-{
-    public float x;
-    public float y;
-    public float z;
-    public int id = 0;
-
-    public Point(float x, float y, float z)
-    {
-        this.x = x;
-        this.y = y;
-        this.z = z;
-    }
-
-    public Point(Vector3 vector)
-    {
-        this.x = vector.x;
-        this.y = vector.y;
-        this.z = vector.z;
-    }
-
-    public static implicit operator Vector3(Point p)
-    {
-        return new Vector3(p.x, p.y, p.z);
-    }
-
-    public static implicit operator Point(Vector3 v)
-    {
-        return new Point(v);
-    }
-}
-
 public class Island : MonoBehaviour
 {
     Mesh mesh;
@@ -46,7 +13,7 @@ public class Island : MonoBehaviour
     Vector3[] undersideVertices;
 
     Point[] points;
-    Tile[] tiles;
+    Quad[] quads;
 
     Vector2[] uvs;
 
@@ -66,6 +33,7 @@ public class Island : MonoBehaviour
 
     public float perlinScaleOne = 0.05f;
     public float terrainMaxHeight = 25f;
+    public float terrainHeightDampener = 0.5f;
 
     public float waterLevel = 2f;
 
@@ -75,9 +43,7 @@ public class Island : MonoBehaviour
     public float firAmount = 0.1f;
     public float oakAmount = 0.1f;
 
-    VoronoiNoise DebugNoise = new VoronoiNoise(0, 0.008f);
-
-    // List<Point> DebugPoints = new List<Point>();
+    VoronoiNoise voronoiNoise = new VoronoiNoise(0, 0.008f);
 
     float[] falloffMap;
 
@@ -87,7 +53,8 @@ public class Island : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        DebugNoise = new VoronoiNoise(seed, 0.008f);
+        UnityEngine.Random.InitState(seed);
+        voronoiNoise = new VoronoiNoise(seed, 0.008f);
         mesh = new Mesh();
         GetComponent<MeshFilter>().mesh = mesh;
         Generate();
@@ -100,7 +67,8 @@ public class Island : MonoBehaviour
         {
             return;
         }
-        DebugNoise = new VoronoiNoise(seed, 0.008f);
+        UnityEngine.Random.InitState(seed);
+        voronoiNoise = new VoronoiNoise(seed, 0.008f);
         instancer.Clear();
         Generate();
         UpdateMesh();
@@ -111,7 +79,7 @@ public class Island : MonoBehaviour
 
     public Point GetPoint(int x, int z) => points[z * (xSize + 1) + x];
 
-    public Tile GetTile(int x, int z) => tiles[z * zSize + x];
+    public Quad GetTile(int x, int z) => quads[z * zSize + x];
 
     public bool IsWater(int x, int z) => vertices[z * (xSize + 1) + x].y < waterLevel;
 
@@ -166,7 +134,7 @@ public class Island : MonoBehaviour
             {
                 float y = Mathf.PerlinNoise((x + seed) * perlinScaleOne, (z + seed) * perlinScaleOne);
 
-                float riverSample = DebugNoise.Sample2D(x, z) * 8;
+                float riverSample = voronoiNoise.Sample2D(x, z) * 8;
 
                 y *= riverSample;
 
@@ -177,19 +145,19 @@ public class Island : MonoBehaviour
                 // Flattens the terrain above the waterlevel
                 if (y > waterLevel)
                 {
-                    y = waterLevel + (y - waterLevel) * 0.4f;
+                    y = waterLevel + (y - waterLevel) * terrainHeightDampener;
                 }
 
                 y = Mathf.Round(y * 2) / 2;
 
                 if (y < waterLevel) y = waterLevel;
 
+
                 vertices[i] = new Vector3(x, y, z);
                 undersideVertices[i] = new Vector3(x, (-(y - waterLevel * 2) * 3) - (waterLevel * 2), z);
-
                 uvs[i] = new Vector2((float)x / xSize, (float)z / zSize);
-
                 points[i] = new Point(x, y, z);
+
 
                 i++;
 
@@ -206,11 +174,12 @@ public class Island : MonoBehaviour
 
         GenerateFeatures();
 
-        Debug.Log("Tiles: " + tiles.Count());
+        Debug.Log("quads: " + quads.Count());
     }
 
     /// <summary>
     /// Applies on offset based on the points id.
+    /// This is what controls the height of the islands
     /// </summary>
     void ModifyVerticies()
     {
@@ -265,29 +234,30 @@ public class Island : MonoBehaviour
             }
             vert++;
         }
+
     }
 
     /// <summary>
     /// Places the foliage on the terrain based on the perlin noise. <br/>
-    /// Creates a tile for each vertice.
+    /// Creates a Quad for each vertice.
     /// </summary>
     void GenerateFeatures()
     {
-        tiles = new Tile[xSize * zSize];
+        quads = new Quad[xSize * zSize];
 
         for (int i = 0, z = 0; z <= zSize - 1; z++)
         {
             for (int x = 0; x <= xSize - 1; x++)
             {
 
-                Tile tile = new Tile(
+                Quad quad = new Quad(
                     GetVertice(x, z),
                     GetVertice(x, z + 1),
                     GetVertice(x + 1, z + 1),
                     GetVertice(x + 1, z)
                 );
 
-                float y = tile.bottomLeft.y;
+                float y = quad.bottomLeft.y;
 
                 Point point = points[z * (xSize + 1) + x];
 
@@ -299,7 +269,7 @@ public class Island : MonoBehaviour
 
                 if (point.id == 0)
                 {
-                    tile.isWater = true;
+                    quad.isWater = true;
                 }
                 else if (normalisedHeight < 12)
                 {
@@ -315,7 +285,7 @@ public class Island : MonoBehaviour
                             float zOffset = z + UnityEngine.Random.Range(-0.5f, 0.5f);
 
                             instancer.AddOak(new Vector3(xOffset, y, zOffset), Quaternion.Euler(-90, 0, 0), scale);
-                            tile.containsTree = true;
+                            quad.containsTree = true;
                         }
 
                     }
@@ -330,7 +300,7 @@ public class Island : MonoBehaviour
                             float zOffset = z + UnityEngine.Random.Range(-0.5f, 0.5f);
 
                             instancer.AddFir(new Vector3(xOffset, y, zOffset), Quaternion.Euler(-90, 0, 0), scale);
-                            tile.containsTree = true;
+                            quad.containsTree = true;
                         }
 
                     }
@@ -348,7 +318,7 @@ public class Island : MonoBehaviour
 
                 }
 
-                tiles[i] = tile;
+                quads[i] = quad;
                 i++;
             }
         }
@@ -378,151 +348,105 @@ public class Island : MonoBehaviour
 
                     int id = UnityEngine.Random.Range(1000, 9999);
 
+                    Debug.Log("Island id: " + id);
+
                     point.id = id;
 
                     List<Point> unvisitedPoints = new List<Point>();
                     unvisitedPoints.Add(point);
+
+                    void VisitPoint(Point current, int xOffset, int zOffset)
+                    {
+                        // Prevent out of bounds of Points array
+                        if (current.x + xOffset < 0 || current.x + xOffset > xSize || current.z + zOffset < 0 || current.z + zOffset > zSize)
+                        {
+                            return;
+                        }
+
+                        Point p = GetPoint((int)current.x + xOffset, (int)current.z + zOffset);
+                        if (p.id == 0 && p.y > waterLevel)
+                        {
+                            p.id = id;
+                            unvisitedPoints.Add(p);
+                        }
+                    }
 
                     while (unvisitedPoints.Count > 0)
                     {
                         Point current = unvisitedPoints[0];
                         unvisitedPoints.RemoveAt(0);
 
-                        if (current.x > 0)
-                        {
-                            Point left = GetPoint((int)current.x - 1, (int)current.z);
-                            if (left.id == 0 && left.y > waterLevel)
-                            {
-                                left.id = id;
-                                unvisitedPoints.Add(left);
-                            }
-                        }
-                        if (current.x < xSize)
-                        {
-                            Point right = GetPoint((int)current.x + 1, (int)current.z);
-                            if (right.id == 0 && right.y > waterLevel)
-                            {
-                                right.id = id;
-                                unvisitedPoints.Add(right);
-                            }
-                        }
-                        if (current.z > 0)
-                        {
-                            Point bottom = GetPoint((int)current.x, (int)current.z - 1);
-                            if (bottom.id == 0 && bottom.y > waterLevel)
-                            {
-                                bottom.id = id;
-                                unvisitedPoints.Add(bottom);
-                            }
-                        }
-                        if (current.z < zSize)
-                        {
-                            Point top = GetPoint((int)current.x, (int)current.z + 1);
-                            if (top.id == 0 && top.y > waterLevel)
-                            {
-                                top.id = id;
-                                unvisitedPoints.Add(top);
-                            }
-                        }
-                        if (current.x > 0 && current.z < zSize)
-                        {
-                            Point topLeft = GetPoint((int)current.x - 1, (int)current.z + 1);
-                            if (topLeft.id == 0 && topLeft.y > waterLevel)
-                            {
-                                topLeft.id = id;
-                                unvisitedPoints.Add(topLeft);
-                            }
-                        }
-                        if (current.x < xSize && current.z < zSize)
-                        {
-                            Point topRight = GetPoint((int)current.x + 1, (int)current.z + 1);
-                            if (topRight.id == 0 && topRight.y > waterLevel)
-                            {
-                                topRight.id = id;
-                                unvisitedPoints.Add(topRight);
-                            }
-                        }
+                        //left
+                        VisitPoint(current, -1, 0);
+                        //right
+                        VisitPoint(current, 1, 0);
+                        //bottom
+                        VisitPoint(current, 0, -1);
+                        //top
+                        VisitPoint(current, 0, 1);
+
+                        //top left
+                        VisitPoint(current, -1, 1);
+                        //top right
+                        VisitPoint(current, 1, 1);
+                        //bottom left
+                        VisitPoint(current, -1, -1);
+                        //bottom right
+                        VisitPoint(current, 1, -1);
+
+                        //far top left
+                        VisitPoint(current, -2, 2);
+                        //far top right
+                        VisitPoint(current, 2, 2);
+                        //far bottom left
+                        VisitPoint(current, -2, -2);
+                        //far bottom right
+                        VisitPoint(current, 2, -2);
                     }
                 };
             }
         }
         Debug.Log("Number of islands: " + islands);
 
+        // Adds every point on the very edge of an island to the islands id
+        int CheckPoint(int max, int x, int z)
+        {
+            if (x < 0 || x > xSize || z < 0 || z > zSize)
+            {
+                return max;
+            }
+            Point p = GetPoint(x, z);
+            if (p.y > waterLevel)
+            {
+                max = Mathf.Max(max, p.id);
+            }
+            return max;
+        }
+
         for (int z = 0; z <= zSize; z++)
         {
             for (int x = 0; x <= xSize; x++)
             {
                 int maxId = 0;
+                //left
+                maxId = CheckPoint(maxId, x - 1, z);
+                //right
+                maxId = CheckPoint(maxId, x + 1, z);
+                //bottom
+                maxId = CheckPoint(maxId, x, z - 1);
+                //top
+                maxId = CheckPoint(maxId, x, z + 1);
 
-                if (x > 0)
-                {
-                    Point left = GetPoint(x - 1, z);
-                    if (left.y > waterLevel)
-                    {
-                        maxId = Mathf.Max(maxId, left.id);
-                    }
-                }
-                if (x < xSize)
-                {
-                    Point right = GetPoint(x + 1, z);
-                    if (right.y > waterLevel)
-                    {
-                        maxId = Mathf.Max(maxId, right.id);
-                    }
-                }
-                if (z > 0)
-                {
-                    Point bottom = GetPoint(x, z - 1);
-                    if (bottom.y > waterLevel)
-                    {
-                        maxId = Mathf.Max(maxId, bottom.id);
-                    }
-                }
-                if (z < zSize)
-                {
-                    Point top = GetPoint(x, z + 1);
-                    if (top.y > waterLevel)
-                    {
-                        maxId = Mathf.Max(maxId, top.id);
-                    }
-                }
-                if (x > 0 && z < zSize)
-                {
-                    Point topLeft = GetPoint(x - 1, z + 1);
-                    if (topLeft.y > waterLevel)
-                    {
-                        maxId = Mathf.Max(maxId, topLeft.id);
-                    }
-                }
-                if (x < xSize && z < zSize)
-                {
-                    Point topRight = GetPoint(x + 1, z + 1);
-                    if (topRight.y > waterLevel)
-                    {
-                        maxId = Mathf.Max(maxId, topRight.id);
-                    }
-                }
-                if (x > 0 && z > 0)
-                {
-                    Point bottomLeft = GetPoint(x - 1, z - 1);
-                    if (bottomLeft.y > waterLevel)
-                    {
-                        maxId = Mathf.Max(maxId, bottomLeft.id);
-                    }
-                }
-                if (x < xSize && z > 0)
-                {
-                    Point bottomRight = GetPoint(x + 1, z - 1);
-                    if (bottomRight.y > waterLevel)
-                    {
-                        maxId = Mathf.Max(maxId, bottomRight.id);
-                    }
-                }
+                //top left
+                maxId = CheckPoint(maxId, x - 1, z + 1);
+                //top right
+                maxId = CheckPoint(maxId, x + 1, z + 1);
+                //bottom left
+                maxId = CheckPoint(maxId, x - 1, z - 1);
+                //bottom right
+                maxId = CheckPoint(maxId, x + 1, z - 1);
 
-                if (maxId != 0)
-                {
-                    points[z * (xSize + 1) + x].id = maxId;
-                }
+                if (maxId != 0) points[z * (xSize + 1) + x].id = maxId;
             }
         }
     }

@@ -1,11 +1,7 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using Unity.VisualScripting;
 using UnityEngine;
 
-public class Tile
+public class Quad
 {
     public Vector3 bottomLeft;
     public Vector3 topLeft;
@@ -21,7 +17,7 @@ public class Tile
     public Color color = Color.black;
     public float islandIndex = 0;
 
-    public Tile(Vector3 bottomLeft, Vector3 topLeft, Vector3 topRight, Vector3 bottomRight)
+    public Quad(Vector3 bottomLeft, Vector3 topLeft, Vector3 topRight, Vector3 bottomRight)
     {
         this.bottomLeft = bottomLeft;
         this.topLeft = topLeft;
@@ -57,9 +53,9 @@ public class Tile
         bottomRight = temp;
     }
 
-    public Tile Clone()
+    public Quad Clone()
     {
-        return new Tile(bottomLeft, topLeft, topRight, bottomRight);
+        return new Quad(bottomLeft, topLeft, topRight, bottomRight);
     }
 
     public override String ToString()

@@ -11,15 +11,6 @@ public enum Direction
     Backward = 180
 }
 
-public enum Pieces
-{
-    Floor = 0,
-    Corner = 1,
-    Incline = 2,
-    InclineCorner = 3,
-}
-
-
 public class RoadPlacer : MonoBehaviour
 {
     public InputController inputController;

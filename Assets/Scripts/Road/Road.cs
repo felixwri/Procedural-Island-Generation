@@ -1,49 +1,49 @@
 using UnityEngine;
 
 /// <summary>
-/// A wrapper class for a tile piece which can calculate the required transform
+/// A wrapper class for a Quad piece which can calculate the required transform
 /// of road pieces
 /// </summary>
 public class Road
 {
-    public Tile Left
+    public Quad Left
     {
         get { return world.GetTile((int)position.x - 1, (int)position.z); }
     }
-    public Tile Right
+    public Quad Right
     {
         get { return world.GetTile((int)position.x + 1, (int)position.z); }
     }
-    public Tile Forward
+    public Quad Forward
     {
         get { return world.GetTile((int)position.x, (int)position.z + 1); }
     }
-    public Tile Back
+    public Quad Back
     {
         get { return world.GetTile((int)position.x, (int)position.z - 1); }
     }
 
-    public Tile tile;
-    public Tile orientedTile;
+    public Quad quad;
+    public Quad orientedTile;
 
     public Island world;
 
     public Vector3 position;
     public Direction direction;
 
-    public Road(Tile tile, Direction direction, Island world)
+    public Road(Quad quad, Direction direction, Island world)
     {
-        this.tile = tile;
+        this.quad = quad;
 
-        this.position = tile.bottomLeft;
+        this.position = quad.bottomLeft;
         this.direction = direction;
 
         this.orientedTile = OrientedTile();
     }
 
-    private Tile OrientedTile()
+    private Quad OrientedTile()
     {
-        Tile orientedTile = tile.Clone();
+        Quad orientedTile = quad.Clone();
 
         if (direction == Direction.Right)
         {
@@ -96,7 +96,7 @@ public class Road
 
     public Vector3 Place()
     {
-        tile.isRoad = true;
+        quad.isRoad = true;
 
         Vector3 maxPosition = orientedTile.bottomLeft;
         if (orientedTile.bottomRight.y > orientedTile.bottomLeft.y)
@@ -110,7 +110,7 @@ public class Road
 
     public Vector3 Place(float x, float y, float z)
     {
-        tile.isRoad = true;
+        quad.isRoad = true;
 
         Vector3 maxPosition = orientedTile.bottomLeft;
         if (orientedTile.bottomRight.y > orientedTile.bottomLeft.y)

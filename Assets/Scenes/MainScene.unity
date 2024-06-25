@@ -1861,13 +1861,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   instancer: {fileID: 1014044531}
-  seed: 0
+  seed: 17
   xSize: 200
   zSize: 200
-  heightDelta: 2
+  heightDelta: 0
   perlinScaleOne: 0.05
   terrainMaxHeight: 25
-  waterLevel: 2
+  waterLevel: 1
   gradient:
     serializedVersion: 2
     key0: {r: 0, g: 0, b: 0, a: 1}

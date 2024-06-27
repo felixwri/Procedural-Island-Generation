@@ -7,14 +7,13 @@ public class PlaceBuilding : MonoBehaviour
 {
     public InputController inputController;
     public Island world;
-    public GameObject SelectionBox;
+    Selector selector;
+
     private Vector3 startingPosition;
     private bool active = true;
     public GameObject building;
     private List<GameObject> prefabs;
 
-    //private List<GameObject> buildings;
-    //public GameObject building;
 
     void Start()
     {
@@ -22,6 +21,8 @@ public class PlaceBuilding : MonoBehaviour
         inputController.OnLeftMouseClick += OnLeftMouseClick;
         inputController.OnMouseHover += OnMouseHover;
 
+        selector = new Selector(world);
+        selector.SetSize(3, 2);
     }
 
 
@@ -32,7 +33,7 @@ public class PlaceBuilding : MonoBehaviour
         startingPosition = Snap(position);
 
 
-        GameObject prefab = Instantiate(building, startingPosition, Quaternion.Euler(-90, 0, 0));
+        GameObject prefab = Instantiate(building, startingPosition, Quaternion.Euler(-90, 180, 0));
         prefabs.Add(prefab);
     }
 
@@ -45,7 +46,7 @@ public class PlaceBuilding : MonoBehaviour
     private void OnMouseHover(Vector3 position)
     {
         if (!active) return;
-        SelectionBox.transform.position = Snap(position);
+        selector.Translate(Snap(position));
     }
 
     void OnApplicationQuit()

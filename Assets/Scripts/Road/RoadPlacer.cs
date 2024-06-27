@@ -24,7 +24,7 @@ public class RoadPlacer : MonoBehaviour
     public GameObject incline_corner_left;
     public GameObject incline_corner_right;
 
-    public GameObject hoverObject;
+    Selector selector;
 
     private Vector3 startingPosition;
     private Vector3 endingPosition;
@@ -39,16 +39,19 @@ public class RoadPlacer : MonoBehaviour
     void Start()
     {
         inputController.OnLeftMouseClick += OnLeftMouseClick;
-        inputController.OnMouseHover += OnMouseHover;
+        // inputController.OnMouseHover += OnMouseHover;
         inputController.OnMouseHold += OnMouseHold;
         inputController.OnMouseRelease += OnMouseRelease;
         inputController.ToggleRoadPlacer += ToggleActive;
+
+        selector = new Selector(world);
+        selector.SetSize(new Vector2Int(1, 1));
     }
 
     void ToggleActive()
     {
         active = !active;
-        hoverObject.SetActive(active);
+        selector.Show();
     }
 
     /// <summary>
@@ -65,7 +68,7 @@ public class RoadPlacer : MonoBehaviour
     private void OnMouseHover(Vector3 position)
     {
         if (!active) return;
-        hoverObject.transform.position = Snap(position);
+        selector.Translate(Snap(position));
     }
 
     private void OnLeftMouseClick(Vector3 position)
@@ -79,7 +82,8 @@ public class RoadPlacer : MonoBehaviour
     private void OnMouseHold(Vector3 position)
     {
         if (!active) return;
-        hoverObject.transform.position = Snap(position);
+
+        selector.Translate(Snap(position));
 
         if (endingPosition != Snap(position))
         {
@@ -95,8 +99,8 @@ public class RoadPlacer : MonoBehaviour
     {
         if (!active) return;
         Debug.Log("Released on " + position);
-        hoverObject.transform.position = Snap(position);
         endingPosition = Snap(position);
+        selector.Translate(Snap(position));
 
         ClearPath();
         CalculatePath();

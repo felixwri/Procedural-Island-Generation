@@ -10,7 +10,7 @@ public class InputController : MonoBehaviour
     float rotationX = 0.0f;
     float rotationY = 0.0f;
 
-    private bool hover = false;
+    private bool hover = true;
 
     public float cameraSensitivity = 15f;
     public float cameraSpeed = 10.0f;
@@ -109,7 +109,7 @@ public class InputController : MonoBehaviour
         {
             float tx = mainCamera.transform.forward.x;
             float tz = mainCamera.transform.forward.z;
-            Vector3 forward = new Vector3(tx, 0, tz);
+            Vector3 forward = new Vector3(tx, 0, tz).normalized;
 
             mainCamera.transform.position += cameraSpeed * Time.deltaTime * forward;
         }
@@ -117,7 +117,7 @@ public class InputController : MonoBehaviour
         {
             float tx = mainCamera.transform.forward.x;
             float tz = mainCamera.transform.forward.z;
-            Vector3 backward = new Vector3(tx, 0, tz);
+            Vector3 backward = new Vector3(tx, 0, tz).normalized;
 
             mainCamera.transform.position -= cameraSpeed * Time.deltaTime * backward;
         }

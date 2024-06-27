@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Voronoi;
 using UnityEngine;
+using Unity.VisualScripting;
 
 public class Island : MonoBehaviour
 {
@@ -29,9 +30,9 @@ public class Island : MonoBehaviour
     public int xSize = 40;
     public int zSize = 40;
 
-    public int heightDelta = 2;
+    public int heightDelta = 0;
 
-    public float perlinScaleOne = 0.05f;
+    public float perlinScale = 0.05f;
     public float terrainMaxHeight = 25f;
     public float terrainHeightDampener = 0.5f;
 
@@ -42,6 +43,10 @@ public class Island : MonoBehaviour
     public float treeNoise = 1f;
     public float firAmount = 0.1f;
     public float oakAmount = 0.1f;
+
+    public float CircFallOffCoefficient = 4f;
+    public float SqFallOffCoefficient = 4f;
+    public bool Flatten = false;
 
     VoronoiNoise voronoiNoise = new VoronoiNoise(0, 0.008f);
 
@@ -85,25 +90,40 @@ public class Island : MonoBehaviour
 
     /// <summary>
     /// Creates a transition between the edge of the map and the center.
-    /// Uses a funky equation to determine the falloff curve
+    /// Uses a funky equation to determine the falloff curve. <br/>
+    /// <c>SqFallOffCoefficient</c> controls a square falloff map. <br/>
+    /// <c>CircFallOffCoefficient</c> controls a circular distance based falloff map. <br/>
+    /// A combination of the two is used to create a smooth transition.
     /// </summary>
     /// <returns>An array of floats between 0 and 1</returns>
     float[] FalloffMap()
     {
         float[] points = new float[(xSize + 1) * (zSize + 1)];
+        Vector2 center = new Vector2(xSize / 2, zSize / 2);
+        float maxDistance = Vector2.Distance(new Vector2(0, 0), center);
+
         for (int z = 0; z <= zSize; z++)
         {
             for (int x = 0; x <= xSize; x++)
             {
                 float xCoord = x / (float)xSize * 2 - 1;
                 float zCoord = z / (float)zSize * 2 - 1;
-                float value = 1 - Mathf.Max(Mathf.Abs(xCoord), Mathf.Abs(zCoord));
+                float squareFalloff = 1 - Mathf.Max(Mathf.Abs(xCoord), Mathf.Abs(zCoord));
+                squareFalloff = 1 / (1 + Mathf.Pow(squareFalloff * SqFallOffCoefficient / (1 - squareFalloff), -3f));
+                if (squareFalloff > 1) squareFalloff = 1;
+
+                Vector2 temp = new Vector2(x, z);
+                float distance = Vector2.Distance(center, temp);
+
+                float circularFalloff = 1 - distance / maxDistance;
 
                 // Funky equation
-                value = 1 / (1 + Mathf.Pow((value * 4) / (1 - value), -3f));
+                circularFalloff = 1 / (1 + Mathf.Pow(circularFalloff * CircFallOffCoefficient / (1 - circularFalloff), -3f));
 
-                if (value > 1) value = 1f;
-                points[z * (xSize + 1) + x] = value;
+                circularFalloff *= squareFalloff;
+
+                if (circularFalloff > 1) circularFalloff = 1f;
+                points[z * (xSize + 1) + x] = circularFalloff;
             }
         }
 
@@ -119,20 +139,18 @@ public class Island : MonoBehaviour
         maxHeight = -Mathf.Infinity;
 
         vertices = new Vector3[(xSize + 1) * (zSize + 1)];
-
         undersideVertices = new Vector3[vertices.Length];
         points = new Point[vertices.Length];
-
         uvs = new Vector2[vertices.Length];
-
         colors = new Color[vertices.Length];
+
         falloffMap = FalloffMap();
 
         for (int z = 0, i = 0; z <= zSize; z++)
         {
             for (int x = 0; x <= xSize; x++)
             {
-                float y = Mathf.PerlinNoise((x + seed) * perlinScaleOne, (z + seed) * perlinScaleOne);
+                float y = Mathf.PerlinNoise((x + seed) * perlinScale, (z + seed) * perlinScale);
 
                 float riverSample = voronoiNoise.Sample2D(x, z) * 8;
 
@@ -145,7 +163,20 @@ public class Island : MonoBehaviour
                 // Flattens the terrain above the waterlevel
                 if (y > waterLevel)
                 {
-                    y = waterLevel + (y - waterLevel) * terrainHeightDampener;
+                    float normalisedHeight = (y - waterLevel) * terrainHeightDampener;
+                    if (normalisedHeight > 0.5)
+                    {
+                        y = waterLevel + normalisedHeight;
+                    }
+                    else
+                    {
+                        y = waterLevel + 0.5f;
+                    }
+
+                    if (Flatten)
+                    {
+                        y = waterLevel + 0.5f;
+                    }
                 }
 
                 y = Mathf.Round(y * 2) / 2;
@@ -188,7 +219,7 @@ public class Island : MonoBehaviour
         {
             Point point = points[i];
             int vertexIndex = (int)point.z * (xSize + 1) + (int)point.x;
-            float yOffset = (point.id % 10) * heightDelta;
+            float yOffset = (point.id % 10) * heightDelta * 0.1f;
             undersideVertices[vertexIndex].y -= yOffset;
             vertices[vertexIndex].y -= yOffset;
         }

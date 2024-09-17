@@ -1,31 +1,33 @@
-using System.Collections;
+
 using System.Collections.Generic;
-using Unity.VisualScripting;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.UIElements;
+
 
 public class Selector : MonoBehaviour
 {
     Mesh mesh;
-    GameObject selection;
     MeshFilter meshFilter;
     MeshRenderer meshRenderer;
-    Island island;
+
+    public Island island;
+
+    public bool inValidPlacement = false;
+
+    float[] xCoords;
+    float[] zCoords;
+
+    int rotation = 0;
 
     public float elevation = 0.2f;
 
     Vector2Int size = new(1, 1);
     Vector3 position = new(0, 0, 0);
 
-    public Selector(Island island)
+    void Start()
     {
-        this.island = island;
         mesh = new Mesh();
-
-        selection = new GameObject("Selection Temp Object");
-        meshFilter = selection.AddComponent<MeshFilter>();
-        meshRenderer = selection.AddComponent<MeshRenderer>();
+        meshFilter = GetComponent<MeshFilter>();
+        meshRenderer = GetComponent<MeshRenderer>();
     }
 
 
@@ -33,7 +35,7 @@ public class Selector : MonoBehaviour
     public void SetSize(Vector2Int size)
     {
         this.size = size;
-        BuildMesh();
+        Initialize();
     }
 
     public void SetPos(float x, float y, float z) => SetPos(new Vector3(x, y, z));
@@ -46,14 +48,61 @@ public class Selector : MonoBehaviour
         }
     }
 
-    private void BuildMesh()
+    public Quad[] ConvertToQuads()
     {
-        selection.transform.position = new Vector3(position.x, position.y, position.z);
+        Quad[] quads = new Quad[size.x * size.y];
 
-        bool inValidPlacement = false;
+        for (int i = 0, z = 0; z < zCoords.Length - 1; z++)
+        {
+            for (int x = 0; x < xCoords.Length - 1; x++)
+            {
+                Vector3 bottomLeft = new Vector3(position.x + x, 0, position.z + z);
+                Vector3 topLeft = new Vector3(position.x + x, 0, position.z + z + 1);
+                Vector3 bottomRight = new Vector3(position.x + x + 1, 0, position.z + z);
+                Vector3 topRight = new Vector3(position.x + x + 1, 0, position.z + z + 1);
+
+                quads[i] = new Quad(bottomLeft, topLeft, topRight, bottomRight);
+                i++;
+            }
+        }
+        return quads;
+    }
+
+    public int GetRotation() => rotation;
+
+    private void Initialize()
+    {
+        transform.position = new Vector3(position.x, position.y, position.z);
+
+        inValidPlacement = false;
 
         mesh.Clear();
 
+        xCoords = new float[size.x + 1];
+        for (int i = 0; i < xCoords.Length; i++)
+        {
+            xCoords[i] = i;
+        }
+        zCoords = new float[size.y + 1];
+        for (int i = 0; i < zCoords.Length; i++)
+        {
+            zCoords[i] = i;
+        }
+
+        CreateMesh();
+
+        if (inValidPlacement)
+        {
+            SetColor(Color.red);
+        }
+        else
+        {
+            SetColor(Color.white);
+        }
+    }
+
+    void CreateMesh()
+    {
         Vector3[] vertices = new Vector3[(size.x + 1) * (size.y + 1)];
 
         int[] triangles = new int[size.x * size.y * 6];
@@ -70,9 +119,9 @@ public class Selector : MonoBehaviour
         int vert = 0;
         int tris = 0;
 
-        for (int z = 0; z < size.y; z++)
+        for (int z = 0; z < zCoords.Length - 1; z++)
         {
-            for (int x = 0; x < size.x; x++)
+            for (int x = 0; x < xCoords.Length - 1; x++)
             {
                 triangles[tris + 0] = vert;
                 triangles[tris + 1] = vert + size.x + 1;
@@ -92,33 +141,29 @@ public class Selector : MonoBehaviour
         mesh.RecalculateNormals();
 
         meshFilter.mesh = mesh;
-
-        if (inValidPlacement)
-        {
-            SetColor(Color.red);
-        }
-        else
-        {
-            SetColor(Color.white);
-        }
     }
 
     void UpdateMeshPosition()
     {
-        bool inValidPlacement = false;
+        inValidPlacement = false;
 
-        selection.transform.position = new Vector3(position.x, position.y, position.z);
+        transform.position = new Vector3(position.x, position.y, position.z);
 
         Vector3[] vertices = mesh.vertices;
-        for (int i = 0, z = 0; z <= size.y; z++)
+        int i = 0;
+        for (int zi = 0; zi < zCoords.Length; zi++) // If zCoords is a List, use zCoords.Count
         {
-            for (int x = 0; x <= size.x; x++)
+            float z = zCoords[zi];
+            for (int xi = 0; xi < xCoords.Length; xi++) // If xCoords is a List, use xCoords.Count
             {
-                Point point = island.GetPoint(x + (int)position.x, z + (int)position.z);
+                float x = xCoords[xi];
+                Point point = island.GetPoint((int)(x + position.x), (int)(z + position.z));
 
-                if (point.id == 0)
+                if (point.id == 0) inValidPlacement = true;
+
+                if (zi < zCoords.Length - 1 && xi < xCoords.Length - 1)
                 {
-                    inValidPlacement = true;
+                    if (island.GetQuad((int)(x + position.x), (int)(z + position.z)).isBuilding) inValidPlacement = true;
                 }
 
                 float height = point.y - position.y;
@@ -139,6 +184,20 @@ public class Selector : MonoBehaviour
         }
     }
 
+    public void Rotate()
+    {
+        rotation += 90;
+        if (rotation == 360) rotation = 0;
+        Debug.Log("Rotation: " + rotation);
+
+        int temp = size.x;
+        size.x = size.y;
+        size.y = temp;
+
+        Initialize();
+        UpdateMeshPosition();
+    }
+
     /// <summary>
     /// Updates the position of the selector.
     /// </summary>
@@ -150,13 +209,12 @@ public class Selector : MonoBehaviour
         position = translation;
         if (mesh == null)
         {
-            BuildMesh();
+            Initialize();
         }
         else
         {
             UpdateMeshPosition();
         }
-
     }
 
     public void SetColor(Color color)
@@ -166,11 +224,11 @@ public class Selector : MonoBehaviour
 
     public void Show()
     {
-        selection.SetActive(true);
+        gameObject.SetActive(true);
     }
 
     public void Hide()
     {
-        selection.SetActive(false);
+        gameObject.SetActive(true);
     }
 }

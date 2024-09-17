@@ -10,6 +10,7 @@ public class Quad
 
     public bool isWater = false;
     public bool isRoad = false;
+    public bool isBuilding = false;
     public bool containsTree = false;
 
     public bool temp = false;

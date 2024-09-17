@@ -1,9 +1,8 @@
-using System;
+
 using System.Collections.Generic;
 using System.Linq;
 using Voronoi;
 using UnityEngine;
-using Unity.VisualScripting;
 
 public class Island : MonoBehaviour
 {
@@ -80,11 +79,31 @@ public class Island : MonoBehaviour
     }
 
 
+    public void SetVertice(Vector3 v, Vector3 n) => vertices[(int)v.z * (xSize + 1) + (int)v.x] = n;
+
+    public Vector3 GetVertice(Vector3 v) => vertices[(int)v.z * (xSize + 1) + (int)v.x];
     public Vector3 GetVertice(int x, int z) => vertices[z * (xSize + 1) + x];
 
+    public Point GetPoint(Vector3 v) => points[(int)v.z * (xSize + 1) + (int)v.x];
     public Point GetPoint(int x, int z) => points[z * (xSize + 1) + x];
 
-    public Quad GetTile(int x, int z) => quads[z * zSize + x];
+    public Quad GetQuad(Vector3 v) => quads[(int)v.z * zSize + (int)v.x];
+    public Quad GetQuad(int x, int z) => quads[z * zSize + x];
+
+    public void UpdateMeshVertices()
+    {
+        // mesh.Clear();
+
+        mesh.vertices = vertices;
+        // mesh.triangles = triangles;
+
+        // mesh.colors = colors;
+        // mesh.uv = uvs;
+
+        // mesh.RecalculateNormals();
+
+        // GetComponent<MeshCollider>().sharedMesh = mesh;
+    }
 
     public bool IsWater(int x, int z) => vertices[z * (xSize + 1) + x].y < waterLevel;
 

@@ -24,7 +24,7 @@ public class RoadPlacer : MonoBehaviour
     public GameObject incline_corner_left;
     public GameObject incline_corner_right;
 
-    Selector selector;
+    public Selector selector;
 
     private Vector3 startingPosition;
     private Vector3 endingPosition;
@@ -39,12 +39,11 @@ public class RoadPlacer : MonoBehaviour
     void Start()
     {
         inputController.OnLeftMouseClick += OnLeftMouseClick;
-        // inputController.OnMouseHover += OnMouseHover;
+        inputController.OnMouseHover += OnMouseHover;
         inputController.OnMouseHold += OnMouseHold;
         inputController.OnMouseRelease += OnMouseRelease;
         inputController.ToggleRoadPlacer += ToggleActive;
 
-        selector = new Selector(world);
         selector.SetSize(new Vector2Int(1, 1));
     }
 
@@ -112,7 +111,7 @@ public class RoadPlacer : MonoBehaviour
         currentPosition.x += change.x;
         currentPosition.z += change.y;
 
-        path.Add(new Road(world.GetTile((int)currentPosition.x, (int)currentPosition.z), direction, world));
+        path.Add(new Road(world.GetQuad((int)currentPosition.x, (int)currentPosition.z), direction, world));
 
         return currentPosition;
     }

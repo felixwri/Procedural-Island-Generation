@@ -8,19 +8,19 @@ public class Road
 {
     public Quad Left
     {
-        get { return world.GetTile((int)position.x - 1, (int)position.z); }
+        get { return world.GetQuad((int)position.x - 1, (int)position.z); }
     }
     public Quad Right
     {
-        get { return world.GetTile((int)position.x + 1, (int)position.z); }
+        get { return world.GetQuad((int)position.x + 1, (int)position.z); }
     }
     public Quad Forward
     {
-        get { return world.GetTile((int)position.x, (int)position.z + 1); }
+        get { return world.GetQuad((int)position.x, (int)position.z + 1); }
     }
     public Quad Back
     {
-        get { return world.GetTile((int)position.x, (int)position.z - 1); }
+        get { return world.GetQuad((int)position.x, (int)position.z - 1); }
     }
 
     public Quad quad;

@@ -26,6 +26,7 @@ public class InputController : MonoBehaviour
     public Action<Vector3> OnMouseHold;
     public Action<Vector3> OnMouseRelease;
     public Action ToggleRoadPlacer;
+    public Action Rotate;
 
     void Update()
     {
@@ -129,6 +130,11 @@ public class InputController : MonoBehaviour
         if (Input.GetKey(KeyCode.E))
         {
             mainCamera.transform.position += cameraSpeed * Time.deltaTime * mainCamera.transform.up;
+        }
+
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            Rotate?.Invoke();
         }
     }
 
